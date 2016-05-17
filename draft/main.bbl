@@ -1,5 +1,122 @@
 \newcommand{\noopsort}[1]{} \newcommand{\printfirst}[2]{#1}
   \newcommand{\singleletter}[1]{#1} \newcommand{\switchargs}[2]{#2#1}
-\begin{thebibliography}{}
+\begin{thebibliography}{10}
+
+\bibitem{Aggarwal:2011}
+Varun Aggarwal and Sassoon Kosian.
+\newblock Feature selection and dimension reduction techniques in sas.
+\newblock {\em NorthEast SAS Users Group (NESUG)}, 2011.
+
+\bibitem{Beyer:2012}
+Mark~A. Beyer and Douglas Laney.
+\newblock The importance of ≪big data≫: A definition.
+\newblock Technical report, Gartner, 2012.
+
+\bibitem{Caruana:2008}
+Rich Caruana, Nikos Karampatziakis, and Ainur Yessenalina.
+\newblock An empirical evaluation of supervised learning in high dimensions.
+\newblock In {\em Proceedings of the 25th International Conference on Machine
+  Learning}, ICML '08, pages 96--103, New York, NY, USA, 2008. ACM.
+
+\bibitem{Chandrashekar:2014}
+Girish Chandrashekar and Ferat Sahin.
+\newblock A survey on feature selection methods.
+\newblock {\em Comput. Electr. Eng.}, 40(1):16--28, January 2014.
+
+\bibitem{Doak:1992}
+Justin Doak.
+\newblock {An Evaluation of Feature Selection Methods and Their Application to
+  Computer Security}.
+\newblock Technical report, UC Davis Department of Computer Science, 1992.
+
+\bibitem{Gamberger:1997}
+Dragan Gamberger and Nada Lavrac.
+\newblock Conditions for occam's razor applicability and noise elimination.
+\newblock In {\em Proceedings of the 9th European Conference on Machine
+  Learning}, ECML '97, pages 108--123, London, UK, UK, 1997. Springer-Verlag.
+
+\bibitem{Guyon:2003}
+Isabelle Guyon and Andr{\'e} Elisseeff.
+\newblock An introduction to variable and feature selection.
+\newblock {\em Journal of Machine Learning Research}, 3:1157--1182, March 2003.
+
+\bibitem{Hall:2000}
+Mark~A. Hall.
+\newblock Correlation-based feature selection for discrete and numeric class
+  machine learning.
+\newblock In {\em Proceedings of the Seventeenth International Conference on
+  Machine Learning}, ICML '00, pages 359--366, San Francisco, CA, USA, 2000.
+  Morgan Kaufmann Publishers Inc.
+
+\bibitem{Jagadish:2014}
+H.~V. Jagadish, Johannes Gehrke, Alexandros Labrinidis, Yannis
+  Papakonstantinou, Jignesh~M. Patel, Raghu Ramakrishnan, and Cyrus Shahabi.
+\newblock Big data and its technical challenges.
+\newblock {\em Commun. ACM}, 57(7):86--94, July 2014.
+
+\bibitem{Kira:1992}
+Kenji Kira and Larry~A. Rendell.
+\newblock The feature selection problem: Traditional methods and a new
+  algorithm.
+\newblock In {\em Proceedings of the Tenth National Conference on Artificial
+  Intelligence}, AAAI'92, pages 129--134. AAAI Press, 1992.
+
+\bibitem{Kononenko:1994}
+Igor Kononenko.
+\newblock Estimating attributes: Analysis and extensions of relief.
+\newblock In {\em Proceedings of the European Conference on Machine Learning on
+  Machine Learning}, ECML-94, pages 171--182, Secaucus, NJ, USA, 1994.
+  Springer-Verlag New York, Inc.
+
+\bibitem{Lichman:2013}
+M.~Lichman.
+\newblock {UCI} machine learning repository, 2013.
+
+\bibitem{Liu:2004}
+Huan Liu, Hiroshi Motoda, and Lei Yu.
+\newblock A selective sampling approach to active feature selection.
+\newblock {\em Artificial Intelligence}, 159(1–2):49 -- 74, 2004.
+
+\bibitem{Liu:2005}
+Huan Liu and Lei Yu.
+\newblock Toward integrating feature selection algorithms for classification
+  and clustering.
+\newblock {\em IEEE Transactions on Knowledge and Data Engineering},
+  17(4):491--502, April 2005.
+
+\bibitem{Narendra:1977}
+P.~M. Narendra and K.~Fukunaga.
+\newblock A branch and bound algorithm for feature subset selection.
+\newblock {\em IEEE Transactions on Computers}, C-26(9):917--922, Sept 1977.
+
+\bibitem{Robnik-Sikonja:1997}
+Marko Robnik-Sikonja and Igor Kononenko.
+\newblock An adaptation of relief for attribute estimation in regression.
+\newblock In {\em Proceedings of the Fourteenth International Conference on
+  Machine Learning}, ICML '97, pages 296--304, San Francisco, CA, USA, 1997.
+  Morgan Kaufmann Publishers Inc.
+
+\bibitem{Singh:2009}
+Sameer Singh, Jeremy Kubica, Scott Larsen, and Daria Sorokina.
+\newblock {\em Parallel Large Scale Feature Selection for Logistic Regression},
+  chapter~99, pages 1172--1183.
+
+\bibitem{Xu:1988}
+Lei Xu, Pingfan Yan, and Tong Chang.
+\newblock Best first strategy for feature selection.
+\newblock In {\em Pattern Recognition, 1988., 9th International Conference on},
+  pages 706--708 vol.2, Nov 1988.
+
+\bibitem{Yang:1998}
+J.~Yang and V.~Honavar.
+\newblock Feature subset selection using a genetic algorithm.
+\newblock {\em IEEE Intelligent Systems and their Applications}, 13(2):44--49,
+  Mar 1998.
+
+\bibitem{Zhang:2016}
+Ce~Zhang, Arun Kumar, and Christopher R{\'e}.
+\newblock Materialization optimizations for feature selection workloads.
+\newblock {\em ACM Transactions on Database Systems}, 41(1):2:1--2:32, February
+  2016.
 
 \end{thebibliography}
