@@ -1,5 +1,5 @@
-/target/
-/.settings/
+*/target/
+*/.settings/
 
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and Webstorm
 
@@ -51,4 +51,5 @@ crashlytics-build.properties
 fabric.properties
 
 # Cover Latex
-.log
+*.log
+*.bak
