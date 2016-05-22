@@ -1,7 +1,8 @@
-import org.apache.spark.api.java.*;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.function.Function;
-import org.apache.spark.api.java.function.PairFunction;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.jblas.DoubleMatrix;
 import scala.Tuple2;
 
 import java.util.List;
@@ -16,6 +17,8 @@ public class FeatureSelector
 	private static int nonad = 0;
 	private static double yAd[] = new double[2];
 	private static double yNonAd[] = new double[2];
+	private static int startIndex = 0;
+
 
 	public static void main(String args[]) throws Exception
 	{
@@ -29,6 +32,8 @@ public class FeatureSelector
 
 		printStats();
 
+		computeFeatureScores(logData);
+
 		// centralize features to have zero mean
 
 		// generate response matrix Y (refer to formula 4)
@@ -38,6 +43,7 @@ public class FeatureSelector
 		//}
 
 	}
+
 
 	/**
 	 * Count number of instances in each class and compute the values for response matrix.
@@ -73,6 +79,58 @@ public class FeatureSelector
 		yNonAd[0] = 1.0 / Math.sqrt(nonad) + yNonAd[1];
 
 	}
+
+
+	private static void computeFeatureScores(JavaRDD<String> logData)
+	{
+		JavaRDD<FeatureScore> fScoreMatrix = logData.map(s -> {
+			String cells[] = s.split(",");
+			double features[] = new double[cells.length - 1];
+			for(int i = 0; i < features.length; i++){
+				//@TODO how to treat missing values
+				if(cells[i].trim().equals("?"))
+					cells[i] = "0";
+
+				features[i] = Double.parseDouble(cells[i]);
+			}
+
+			DoubleMatrix x = new DoubleMatrix(1, features.length, features);
+			DoubleMatrix y;
+			DoubleMatrix ones;
+
+			if(cells[cells.length - 1].equals(AD)){
+				y = new DoubleMatrix(1, 2, yAd);
+			} else{
+				y = new DoubleMatrix(1, 2, yNonAd);
+			}
+
+			ones = DoubleMatrix.ones(1);
+			return new FeatureScore(y.transpose().mmul(x), ones.transpose().mmul(x.mul(x)));
+		});
+
+		FeatureScore totalScore = fScoreMatrix.reduce((a, b) -> a.add(b));
+		numberOfFeatures = totalScore.getEMatrix().columns;
+
+		DoubleMatrix e = totalScore.getEMatrix();
+		DoubleMatrix v = totalScore.getVMatrix();
+		DoubleMatrix s;
+		s = DoubleMatrix.ones(1).transpose().mmul(e.mul(e));
+
+//		System.out.println("s before division: " + s.get(s.columns+1));
+//		System.out.println("V: " + v.toString());
+//		System.out.println("#rows of v:" + v.rows);
+//		System.out.println("#columns of v:" + v.columns);
+
+		//@TODO check if this is element-wise division
+		s = s.diviRowVector(v);
+
+//		System.out.println("s after division: " + s.get(s.columns+1));
+		System.out.println("#rows of s:" + s.rows);
+		System.out.println("#columns of s:" + s.columns);
+
+		startIndex = s.argmax();
+	}
+
 
 	public static void printStats()
 	{
