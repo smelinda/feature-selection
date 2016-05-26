@@ -54,8 +54,10 @@ public class FeatureSelector
 
 	private static Set<Integer> getBestFeatures(DoubleMatrix score, JavaRDD<String> logData){
 		Set<Integer> set = new HashSet<>();
-		int maxIndex = 0, k = 10, l = 1;
+		int maxIndex = score.argmax(), k = 10, l = 1;
 		set.add(maxIndex);
+
+		//System.out.println("Max Index: " + maxIndex);
 
 		Broadcast broadcastIdx = sc.broadcast(maxIndex);
 
@@ -64,8 +66,9 @@ public class FeatureSelector
 				String cells[] = s.split(",");
 				double features[] = getFeatures(cells);
 
-				DoubleMatrix x = new DoubleMatrix(features);
-				DoubleMatrix c = x.transpose().mmul(x.get(0, (int)broadcastIdx.value()));
+				DoubleMatrix x = new DoubleMatrix(features).transpose();
+				DoubleMatrix f = new DoubleMatrix(new double[]{x.get(0, (int)broadcastIdx.value())});
+				DoubleMatrix c = x.mmul(f);
 
 				return c;
 			});
@@ -105,7 +108,7 @@ public class FeatureSelector
 
 			//System.out.println("unselected index: " + c.getRows() + " " + c.getColumns());
 			DoubleMatrix s = getNextScore(selectedIndexes, unSelectedIndexes, logData);
-			maxIndex = getMaxFeatureScoreIndex(s);
+			maxIndex = s.argmax();
 			set.add(maxIndex);
 			l++;
 
