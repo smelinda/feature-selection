@@ -1,3 +1,8 @@
+package io;
+
+/**
+ * Created by Gumokun on 02/06/16.
+ */
 import org.jblas.DoubleMatrix;
 
 import java.io.Serializable;
