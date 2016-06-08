@@ -1,7 +1,5 @@
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.mllib.linalg.Vectors;
+import io.FSInputReader;
+import io.AdsInputReader;
 
 public class FeatureSelector
 {
@@ -9,27 +7,8 @@ public class FeatureSelector
 	{
 		String fileName = "/Users/Gumokun/Desktop/test-data/latest3.txt";
 		// Read input data set
-//		FSInputReader reader = new AdsInputReader();
-//		reader.process();
-
-		SparkConf conf = new SparkConf().setAppName("Feature Selector");
-		JavaSparkContext sc = new JavaSparkContext(conf);
-		JavaRDD<String> rows = sc.textFile(fileName);
-
-		JavaRDD<List<Double>> values = rows.map(s -> {
-			String str[] = s.split(" ");
-			Double temp[] = new Double[str.length];
-
-			for(int i = 0; i < str.length; i++){
-				temp[i] = Double.parseDouble(str[i]);
-			}
-
-			return temp;
-		});
-
-		V
-
-		System.out.println(pos.toString());
+		FSInputReader reader = new AdsInputReader();
+		reader.process();
 
 		// centralize features to have zero mean
 

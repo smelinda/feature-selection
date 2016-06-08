@@ -1,6 +1,3 @@
-/**
- * Created by Gumokun on 25/05/16.
- */
 public class ScoreIndex implements Comparable<ScoreIndex>{
     private double score;
     private int index;

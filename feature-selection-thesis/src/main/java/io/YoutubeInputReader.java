@@ -8,9 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Created by Gumokun on 02/06/16.
- */
+
 public class YoutubeInputReader extends FSInputReader {
     private static final String FILE_NAME = "ad.data";
     private int numberOfInstances = 0;

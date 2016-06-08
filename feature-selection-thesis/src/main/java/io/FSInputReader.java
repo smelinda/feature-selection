@@ -4,9 +4,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
-/**
- * Created by Gumokun on 02/06/16.
- */
+
 public abstract class FSInputReader {
     private static final String INPUT_PATH = "data/";
     private static final String OUTPUT_PATH = "out/";

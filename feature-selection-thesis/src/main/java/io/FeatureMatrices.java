@@ -1,15 +1,9 @@
 package io;
 
-/**
- * Created by Gumokun on 02/06/16.
- */
 import org.jblas.DoubleMatrix;
 
 import java.io.Serializable;
 
-/**
- * Created by Gumokun on 26/05/16.
- */
 public class FeatureMatrices implements Serializable{
     private DoubleMatrix matrixA;
     private DoubleMatrix matrixCY1;

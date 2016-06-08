@@ -13,9 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Created by Gumokun on 02/06/16.
- */
 public class AdsInputReader extends FSInputReader {
     private static final String FILE_NAME = "ad.data";
     private static final String AD = "ad.";
@@ -147,11 +144,7 @@ public class AdsInputReader extends FSInputReader {
             DoubleMatrix c = ci.reduce((a,b) -> a.add(b));
 
 //			Range lRange = new IntervalRange(0, l);
-//
 //			DoubleMatrix cOfSelectedFeatures = c.get(lRange, lRange);
-
-
-
             //temp.reduce((a,b) -> a);
 
             int selectedIndexes[] = new int[set.size()];
@@ -162,10 +155,7 @@ public class AdsInputReader extends FSInputReader {
             for(Integer idx : set){
                 selectedIndexes[i] = idx;
                 sign[i] = true;
-
                 i++;
-
-                //System.out.println(idx);
             }
 
             int j = 0;
@@ -177,7 +167,6 @@ public class AdsInputReader extends FSInputReader {
                 }
             }
 
-            //System.out.println("unselected index: " + c.getRows() + " " + c.getColumns());
             DoubleMatrix s = getNextScore(selectedIndexes, unSelectedIndexes, logData);
             maxIndex = s.argmax();
             set.add(maxIndex);

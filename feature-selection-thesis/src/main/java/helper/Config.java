@@ -1,8 +1,5 @@
 package helper;
 
-/**
- * Created by Gumokun on 02/06/16.
- */
 public class Config
 {
     private static final String INPUT_PATH = "data/";

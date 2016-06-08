@@ -1,8 +1,6 @@
 package io;
 
-/**
- * Created by Gumokun on 02/06/16.
- */
+
 public class ResponseMatrixValue {
     private double classValue;
     private double otherClassesValue;
