@@ -8,12 +8,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
 public class YoutubeInputReader extends FSInputReader {
     private static final String FILE_NAME = "ad.data";
     private int numberOfInstances = 0;
     private Map<String, ResponseMatrixValue> responseMatrixValueMap = new HashMap<>();
 
+    /**
+     * Initiate input file name to Youtube Multiview Video Games dataset
+     * (https://archive.ics.uci.edu/ml/datasets/YouTube+Multiview+Video+Games+Dataset)
+     * from UCI Machine Learning Repository.
+     */
     public YoutubeInputReader(){
         super(FILE_NAME);
     }

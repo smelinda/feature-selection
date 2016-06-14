@@ -4,14 +4,27 @@ import org.jblas.DoubleMatrix;
 
 import java.io.Serializable;
 
-public class FeatureMatrices implements Serializable{
+/**
+ * Matrix of feature scores to decide selected features
+ */
+public class FeatureMatrices implements Serializable
+{
     private DoubleMatrix matrixA;
     private DoubleMatrix matrixCY1;
     private DoubleMatrix matrixCY2;
     private DoubleMatrix matrixC12;
     private DoubleMatrix matrixV2;
 
-    public FeatureMatrices(DoubleMatrix matrixA, DoubleMatrix matrixCY1, DoubleMatrix matrixCY2, DoubleMatrix matrixC12, DoubleMatrix matrixV2) {
+    /**
+     * Construct compounds of matrix of scores
+     * @param matrixA A matrix of selected features
+     * @param matrixCY1 Covariance matrix of selected features
+     * @param matrixCY2 Covariance matrix of unselected features
+     * @param matrixC12 Covariance matrix between selected and unselected features
+     * @param matrixV2 variance (v) of unselected features
+     */
+    public FeatureMatrices(DoubleMatrix matrixA, DoubleMatrix matrixCY1, DoubleMatrix matrixCY2, DoubleMatrix matrixC12, DoubleMatrix matrixV2)
+    {
         this.matrixA = matrixA;
         this.matrixCY1 = matrixCY1;
         this.matrixCY2 = matrixCY2;
@@ -59,6 +72,11 @@ public class FeatureMatrices implements Serializable{
         this.matrixV2 = matrixV2;
     }
 
+    /**
+     * One score can be added to other scores.
+     * @param featureMatrices matrix of scores to be added
+     * @return matrix of scores after addition operation
+     */
     public FeatureMatrices add(FeatureMatrices featureMatrices){
         matrixA = matrixA.add(featureMatrices.getMatrixA());
         matrixCY1 = matrixCY1.add(featureMatrices.getMatrixCY1());

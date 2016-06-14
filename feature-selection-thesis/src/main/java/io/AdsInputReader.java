@@ -1,5 +1,6 @@
 package io;
 
+import helper.FSUtil;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.broadcast.Broadcast;
@@ -9,49 +10,49 @@ import org.jblas.ranges.IndicesRange;
 import org.jblas.ranges.IntervalRange;
 import scala.Tuple2;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
-public class AdsInputReader extends FSInputReader {
+
+public class AdsInputReader extends FSInputReader
+{
     private static final String FILE_NAME = "ad.data";
     private static final String AD = "ad.";
     private static final String NON_AD = "nonad.";
-    private static int numberOfInstances = 0;
-    private static int ad = 0;
-    private static int nonad = 0;
-    private static double yAd[] = new double[2];
-    private static double yNonAd[] = new double[2];
-    private static int numberOfFeatures = 0;
-    private static int startIndex = 0;
+    private int numberOfInstances = 0;
+    private int ad = 0;
+    private int nonad = 0;
+    private static Double yAd[] = new Double[2];
+    private static Double yNonAd[] = new Double[2];
+    private JavaRDD<XYMatrix> xyMatrix;
 
+    /**
+     * Initiate input file name to Internet Advertisements dataset
+     * (https://archive.ics.uci.edu/ml/datasets/Internet+Advertisements)
+     * from UCI Machine Learning Repository.
+     */
     public AdsInputReader(){
         super(FILE_NAME);
     }
 
+    /**
+     * Run feature selection.
+     */
     public void process(){
-        JavaRDD<String> rawData = getRawData();
+        JavaRDD<String[]> rawData = getRawData().map(s -> s.split(","));
         countClasses(rawData);
-
         printStats();
-
         DoubleMatrix score = computeFeatureScores(rawData);
-
-        System.out.println(getBestFeatures(score, rawData));
+        System.out.println("Selected features: " + getBestFeatures(score));
     }
 
     /**
      * Count number of instances in each class and compute the values for response matrix.
      * @param logData input data
      */
-    private void countClasses(JavaRDD<String> logData)
+    private void countClasses(JavaRDD<String[]> logData)
     {
         // map values in class column into pair of <class, 1>
-        JavaPairRDD<String, Integer> pairs = logData.mapToPair(s -> {
-            String temp[] = s.split(",");
-            return new Tuple2<>(temp[temp.length - 1], 1);
-        });
-
+        JavaPairRDD<String, Integer> pairs = logData.mapToPair(s -> new Tuple2<>(s[s.length - 1], 1));
         JavaPairRDD<String, Integer> counts = pairs.reduceByKey((a, b) -> a + b);
         List<Tuple2<String, Integer>> list = counts.collect();
 
@@ -74,28 +75,44 @@ public class AdsInputReader extends FSInputReader {
         yNonAd[0] = 1.0 / Math.sqrt(nonad) + yNonAd[1];
     }
 
-    private static DoubleMatrix computeFeatureScores(JavaRDD<String> logData)
+    /**
+     * Compute feature scores E and v based on algorithm step 1-3
+     * @param logData input data
+     * @return s scores for each features in a feature matrix
+     */
+    private DoubleMatrix computeFeatureScores(JavaRDD<String[]> logData)
     {
-        JavaRDD<FeatureScore> fScoreMatrix = logData.map(s -> {
-            String cells[] = s.split(",");
-            double features[] = getFeatures(cells);
+        xyMatrix = logData.mapPartitions(iterator -> {
+            ArrayList<Double[]> featureMatrix = new ArrayList<>();
+            ArrayList<Double[]> responseMatrix = new ArrayList<>();
 
-            DoubleMatrix x = new DoubleMatrix(1, features.length, features);
-            DoubleMatrix y;
-            DoubleMatrix ones;
+            while(iterator.hasNext()) {
+                String[] splittedLine = iterator.next();
+                featureMatrix.add(getFeatures(splittedLine));
 
-            if(cells[cells.length - 1].equals(AD)){
-                y = new DoubleMatrix(1, 2, yAd);
-            } else{
-                y = new DoubleMatrix(1, 2, yNonAd);
+                if (splittedLine[splittedLine.length - 1].equals(AD)) {
+                    responseMatrix.add(yAd);
+                } else {
+                    responseMatrix.add(yNonAd);
+                }
             }
 
-            ones = DoubleMatrix.ones(x.getRows());
+            DoubleMatrix x = new DoubleMatrix(FSUtil.convertToDoubleArray(featureMatrix));
+            DoubleMatrix y = new DoubleMatrix(FSUtil.convertToDoubleArray(responseMatrix));
+
+            return Collections.singleton(new XYMatrix(x, y));
+        }).cache();
+
+        JavaRDD<FeatureScore> fScoreMatrix = xyMatrix.map(matrix -> {
+            DoubleMatrix x = matrix.getX();
+            DoubleMatrix y = matrix.getY();
+
+            DoubleMatrix ones = DoubleMatrix.ones(x.getRows());
+
             return new FeatureScore(y.transpose().mmul(x), ones.transpose().mmul(x.mul(x)));
         });
 
         FeatureScore totalScore = fScoreMatrix.reduce((a, b) -> a.add(b));
-        numberOfFeatures = totalScore.getEMatrix().columns;
 
         DoubleMatrix e = totalScore.getEMatrix();
         DoubleMatrix v = totalScore.getVMatrix();
@@ -110,7 +127,7 @@ public class AdsInputReader extends FSInputReader {
 //		System.out.println("#rows of v:" + v.rows);
 //		System.out.println("#columns of v:" + v.columns);
 
-        //@TODO check if this is element-wise division
+        // Element-wise division on matrix
         s = s.diviRowVector(v);
 
 //		System.out.println("s after division: " + s.get(s.columns+1));
@@ -120,7 +137,13 @@ public class AdsInputReader extends FSInputReader {
         return s;
     }
 
-    private Set<Integer> getBestFeatures(DoubleMatrix score, JavaRDD<String> logData){
+    /**
+     * Select best features based on precomputed scores.
+     * @param score precomputed scores
+     * @return index of selected features
+     */
+    private Set<Integer> getBestFeatures(DoubleMatrix score)
+    {
         Set<Integer> set = new HashSet<>();
         int maxIndex = score.argmax(), k = 10, l = 1;
         set.add(maxIndex);
@@ -128,33 +151,33 @@ public class AdsInputReader extends FSInputReader {
         //System.out.println("Max Index: " + maxIndex);
 
         Broadcast broadcastIdx = getSparkContext().broadcast(maxIndex);
+        DoubleMatrix cAcc = null;
 
         while(l < k){
-            JavaRDD<DoubleMatrix> ci = logData.map(s -> {
-                String cells[] = s.split(",");
-                double features[] = getFeatures(cells);
+            JavaRDD<DoubleMatrix> ci = xyMatrix.map(matrix -> {
+                DoubleMatrix x = matrix.getX();
 
-                DoubleMatrix x = new DoubleMatrix(features).transpose();
-                DoubleMatrix f = new DoubleMatrix(new double[]{x.get(0, (int)broadcastIdx.value())});
-                DoubleMatrix c = x.mmul(f);
+                DoubleMatrix f = x.getColumn((int)broadcastIdx.value());
+                DoubleMatrix c = x.transpose().mmul(f);
 
                 return c;
             });
 
-            DoubleMatrix c = ci.reduce((a,b) -> a.add(b));
+            if(cAcc == null) {
+                cAcc = ci.reduce((a, b) -> a.add(b));
+            } else{
+                cAcc = DoubleMatrix.concatHorizontally(cAcc, ci.reduce((a, b) -> a.add(b)));
+            }
 
-//			Range lRange = new IntervalRange(0, l);
-//			DoubleMatrix cOfSelectedFeatures = c.get(lRange, lRange);
-            //temp.reduce((a,b) -> a);
-
-            int selectedIndexes[] = new int[set.size()];
-            int unSelectedIndexes[] = new int[c.getColumns() - selectedIndexes.length];
-            boolean sign[] = new boolean[c.getColumns()];
+            int selectedIndexes[] = new int[l];
+            int unSelectedIndexes[] = new int[cAcc.rows - l];
+            boolean sign[] = new boolean[cAcc.rows];
             int i = 0;
 
             for(Integer idx : set){
                 selectedIndexes[i] = idx;
                 sign[i] = true;
+
                 i++;
             }
 
@@ -167,56 +190,43 @@ public class AdsInputReader extends FSInputReader {
                 }
             }
 
-            DoubleMatrix s = getNextScore(selectedIndexes, unSelectedIndexes, logData);
+            //System.out.println("unselected index: " + c.getRows() + " " + c.getColumns());
+            DoubleMatrix s = getNextScore(selectedIndexes, unSelectedIndexes, xyMatrix);
             maxIndex = s.argmax();
             set.add(maxIndex);
             l++;
 
-            System.out.println(maxIndex + " " + l);
+            //System.out.println(maxIndex + " " + l);
         }
 
         return set;
     }
 
-    private static int getMaxFeatureScoreIndex(DoubleMatrix score){
-        double max = 0;
-        int idx = 0;
-
-        for(int i = 0; i < score.getColumns(); i++){
-            if(score.get(0, i) > max){
-                max = score.get(0, i);
-                idx = i;
-            }
-        }
-
-        return idx;
-    }
-
-    private DoubleMatrix getNextScore(int selectedIndexes[], int unselectedIndexes[], JavaRDD<String> logData){
+    /**
+     * Iteratively update feature score based on selected and unselected features.
+     * @param selectedIndexes index of selected features
+     * @param unselectedIndexes index of unselected features
+     * @param logData input file
+     * @return matrix of feature scores
+     */
+    private DoubleMatrix getNextScore(int selectedIndexes[], int unselectedIndexes[], JavaRDD<XYMatrix> logData)
+    {
         Broadcast broadcastSelectedIndexes = getSparkContext().broadcast(selectedIndexes);
         Broadcast broadcastUnselectedIndexes = getSparkContext().broadcast(unselectedIndexes);
 
-        JavaRDD<FeatureMatrices> temp = logData.map(s -> {
-            String cells[] = s.split(",");
-            double features[] = getFeatures(cells);
+        System.out.println("Selected: " + selectedIndexes.length + " Unselected: " + unselectedIndexes.length);
 
-            DoubleMatrix x = new DoubleMatrix(features).transpose();
+        JavaRDD<FeatureMatrices> temp = logData.map(matrix -> {
+            DoubleMatrix x = matrix.getX();
+            DoubleMatrix y = matrix.getY();
+
             DoubleMatrix x1 = x.get(new IntervalRange(0, x.getRows()), new IndicesRange((int[])broadcastSelectedIndexes.getValue()));
             DoubleMatrix x2 = x.get(new IntervalRange(0, x.getRows()), new IndicesRange((int[])broadcastUnselectedIndexes.getValue()));
 
 //			System.out.println("Dimension x1: " + x1.getRows() + " " + x1.getColumns());
 //			System.out.println("Dimension x2: " + x2.getRows() + " " + x2.getColumns());
-            DoubleMatrix y;
-            DoubleMatrix ones;
 
-            if(cells[cells.length - 1].equals(AD)){
-                y = new DoubleMatrix(1, 2, yAd);
-            } else{
-                y = new DoubleMatrix(1, 2, yNonAd);
-            }
-
-
-            ones = DoubleMatrix.ones(x.getRows());
+            DoubleMatrix ones = DoubleMatrix.ones(x.getRows());
 
             DoubleMatrix matrixA = x1.transpose().mmul(x1);
             DoubleMatrix matrixCY1 = y.transpose().mmul(x1);
@@ -241,8 +251,8 @@ public class AdsInputReader extends FSInputReader {
         DoubleMatrix g = DoubleMatrix.ones(matrixG.getRows()).transpose().mmul(matrixG.mul(matrixG));
         DoubleMatrix w = featureMatrices.getMatrixV2().sub(DoubleMatrix.ones(featureMatrices.getMatrixC12().getRows()).transpose().mmul(featureMatrices.getMatrixC12().mul(matrixB)));
 
-//		System.out.println(g.getRows() + " " + g.getColumns());
-//		System.out.println(w.getRows() + " " + w.getColumns());
+		//System.out.println("Dimension of G: " + g.getRows() + " x " + g.getColumns());
+		//System.out.println("Dimension of w: " + w.getRows() + " x " + w.getColumns());
         DoubleMatrix s = g.divi(w);
 
         //System.out.println(matrixG.getRows() + " " + matrixG.getColumns());
@@ -250,10 +260,16 @@ public class AdsInputReader extends FSInputReader {
         return s;
     }
 
-    private static double[] getFeatures(String cells[]){
-        double features[] = new double[cells.length - 1];
-        for(int i = 0; i < features.length; i++){
-            //@TODO how to treat missing values
+    /**
+     * Get all features per data point
+     * @param cells cells per row in input file
+     * @return features in a double array
+     */
+    private static Double[] getFeatures(String cells[])
+    {
+        Double features[] = new Double[cells.length - 1];
+        for(int i = 0; i < features.length; i++) {
+            // To treat missing values, we convert them to zero.
             if(cells[i].trim().equals("?"))
                 cells[i] = "0";
 
@@ -263,12 +279,13 @@ public class AdsInputReader extends FSInputReader {
         return features;
     }
 
+    /**
+     * Print out data statistics like number of instances and class distribution.
+     */
     private void printStats()
     {
-        System.out.println("ad:" + ad);
-        System.out.println("non ad:" + nonad);
-        System.out.println("# instances:" + numberOfInstances);
-        System.out.println("yAd:" + yAd[0] + "," + yAd[1]);
-        System.out.println("yNonAd:" + yNonAd[0] +"," + yNonAd[1]);
+        System.out.println("# instances:" + numberOfInstances + "(ad:" + ad + ", non ad:" + nonad + ")");
+        System.out.println("yAd: [" + yAd[0] + "," + yAd[1] + "]");
+        System.out.println("yNonAd: [" + yNonAd[0] +"," + yNonAd[1] + "]");
     }
 }
