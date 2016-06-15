@@ -22,7 +22,7 @@ public class YoutubeInputReader extends FSInputReader {
         super(FILE_NAME);
     }
 
-    public void process(){
+    public void process(int loopNumber){
         countClasses(getRawData());
     }
 

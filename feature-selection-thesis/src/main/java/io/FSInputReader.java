@@ -32,7 +32,7 @@ public abstract class FSInputReader
 
 
     /**
-     * Contstructor that regulates input reader structure for feature selection.
+     * Constructor that regulates input reader structure for feature selection.
      * @param fileName input file name
      */
     public FSInputReader(String fileName)
@@ -72,6 +72,7 @@ public abstract class FSInputReader
 
     /**
      * This method calls the actual feature selection.
+     * @param loopNumber number of features to be selected
      */
-    abstract public void process();
+    abstract public void process(int loopNumber);
 }

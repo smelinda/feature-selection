@@ -37,12 +37,12 @@ public class AdsInputReader extends FSInputReader
     /**
      * Run feature selection.
      */
-    public void process(){
+    public void process(int loopNumber){
         JavaRDD<String[]> rawData = getRawData().map(s -> s.split(","));
         countClasses(rawData);
         printStats();
         DoubleMatrix score = computeFeatureScores(rawData);
-        System.out.println("Selected features: " + getBestFeatures(score));
+        System.out.println("Selected features: " + getBestFeatures(score, loopNumber));
     }
 
     /**
@@ -128,7 +128,7 @@ public class AdsInputReader extends FSInputReader
 //		System.out.println("#columns of v:" + v.columns);
 
         // Element-wise division on matrix
-        s = s.diviRowVector(v);
+        s = s.divi(v);
 
 //		System.out.println("s after division: " + s.get(s.columns+1));
         System.out.println("#rows of s:" + s.rows);
@@ -142,27 +142,28 @@ public class AdsInputReader extends FSInputReader
      * @param score precomputed scores
      * @return index of selected features
      */
-    private Set<Integer> getBestFeatures(DoubleMatrix score)
+    private Set<Integer> getBestFeatures(DoubleMatrix score, int loopNumber)
     {
         Set<Integer> set = new HashSet<>();
-        int maxIndex = score.argmax(), k = 10, l = 1;
+        int maxIndex = score.argmax(), k = loopNumber, l = 1;
         set.add(maxIndex);
 
         //System.out.println("Max Index: " + maxIndex);
 
-        Broadcast broadcastIdx = getSparkContext().broadcast(maxIndex);
         DoubleMatrix cAcc = null;
 
         while(l < k){
+            Broadcast broadcastIdx = getSparkContext().broadcast(maxIndex);
+
+            // step 8
             JavaRDD<DoubleMatrix> ci = xyMatrix.map(matrix -> {
                 DoubleMatrix x = matrix.getX();
-
                 DoubleMatrix f = x.getColumn((int)broadcastIdx.value());
                 DoubleMatrix c = x.transpose().mmul(f);
-
                 return c;
             });
 
+            // step 9
             if(cAcc == null) {
                 cAcc = ci.reduce((a, b) -> a.add(b));
             } else{
@@ -171,21 +172,14 @@ public class AdsInputReader extends FSInputReader
 
             int selectedIndexes[] = new int[l];
             int unSelectedIndexes[] = new int[cAcc.rows - l];
-            boolean sign[] = new boolean[cAcc.rows];
-            int i = 0;
 
+            int i = 0, j = 0;
             for(Integer idx : set){
-                selectedIndexes[i] = idx;
-                sign[i] = true;
-
-                i++;
+                selectedIndexes[i++] = idx;
             }
 
-            int j = 0;
-
-            for(i = 0; i < sign.length; i++){
-                if(sign[i] == false){
-                    sign[i] = true;
+            for(i = 0; i < cAcc.rows; i++){
+                if(!set.contains(i)) {
                     unSelectedIndexes[j++] = i;
                 }
             }
@@ -216,6 +210,7 @@ public class AdsInputReader extends FSInputReader
 
         System.out.println("Selected: " + selectedIndexes.length + " Unselected: " + unselectedIndexes.length);
 
+        // step 10
         JavaRDD<FeatureMatrices> temp = logData.map(matrix -> {
             DoubleMatrix x = matrix.getX();
             DoubleMatrix y = matrix.getY();
@@ -243,13 +238,16 @@ public class AdsInputReader extends FSInputReader
             return new FeatureMatrices(matrixA, matrixCY1, matrixCY2, matrixC12, matrixV2);
         });
 
+        // step 11
         FeatureMatrices featureMatrices = temp.reduce((a, b) -> a.add(b));
         DoubleMatrix matrixB = Solve.pinv(featureMatrices.getMatrixA()).mmul(featureMatrices.getMatrixC12());
         DoubleMatrix matrixH = featureMatrices.getMatrixCY1().mmul(matrixB);
         DoubleMatrix matrixG = featureMatrices.getMatrixCY2().sub(matrixH);
 
         DoubleMatrix g = DoubleMatrix.ones(matrixG.getRows()).transpose().mmul(matrixG.mul(matrixG));
-        DoubleMatrix w = featureMatrices.getMatrixV2().sub(DoubleMatrix.ones(featureMatrices.getMatrixC12().getRows()).transpose().mmul(featureMatrices.getMatrixC12().mul(matrixB)));
+        DoubleMatrix w = featureMatrices.getMatrixV2().sub(DoubleMatrix.ones(
+                featureMatrices.getMatrixC12().getRows()).transpose().mmul(
+                featureMatrices.getMatrixC12().mul(matrixB)));
 
 		//System.out.println("Dimension of G: " + g.getRows() + " x " + g.getColumns());
 		//System.out.println("Dimension of w: " + w.getRows() + " x " + w.getColumns());
