@@ -71,8 +71,18 @@ public abstract class FSInputReader
     }
 
     /**
+     * Get path to output set.
+     * @return output path
+     */
+    private String getOutputPath()
+    {
+        return OUTPUT_PATH;
+    }
+
+    /**
      * This method calls the actual feature selection.
      * @param loopNumber number of features to be selected
+     * @param outputFileName name of the file with selected features only
      */
-    abstract public void process(int loopNumber);
+    abstract public void process(int loopNumber, String outputFileName);
 }

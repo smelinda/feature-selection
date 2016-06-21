@@ -10,14 +10,19 @@ import org.jblas.ranges.IndicesRange;
 import org.jblas.ranges.IntervalRange;
 import scala.Tuple2;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 import java.util.*;
 
 
 public class AdsInputReader extends FSInputReader
 {
-    private static final String FILE_NAME = "ad.data";
+    private static final String FILE_NAME = "ad_transform.data";
     private static final String AD = "ad.";
     private static final String NON_AD = "nonad.";
+    private static final int FEATURE_SIZE = 1558;
     private int numberOfInstances = 0;
     private int ad = 0;
     private int nonad = 0;
@@ -30,29 +35,90 @@ public class AdsInputReader extends FSInputReader
      * (https://archive.ics.uci.edu/ml/datasets/Internet+Advertisements)
      * from UCI Machine Learning Repository.
      */
-    public AdsInputReader(){
+    public AdsInputReader()
+    {
         super(FILE_NAME);
     }
 
     /**
      * Run feature selection.
      */
-    public void process(int loopNumber){
-        JavaRDD<String[]> rawData = getRawData().map(s -> s.split(","));
+    public void process(int loopNumber, String outputFileName)
+    {
+        JavaRDD<List<String[]>> rawData = getRawData().mapPartitions(iterator -> {
+            List<String[]> list = new ArrayList<>();
+
+            while(iterator.hasNext()){
+                list.add(iterator.next().split(" "));
+            }
+
+            return Collections.singleton(list);
+        });
+
         countClasses(rawData);
         printStats();
         DoubleMatrix score = computeFeatureScores(rawData);
-        System.out.println("Selected features: " + getBestFeatures(score, loopNumber));
+
+        try {
+            write(getBestFeatures(score, loopNumber), outputFileName);
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void write(Set<Integer> ids, String outputName) throws Exception{
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outputName))));
+        StringBuffer buffIdx = new StringBuffer();
+        StringBuffer buffValue = new StringBuffer();
+
+        for(Integer id : ids){
+            buffIdx.append(id);
+            buffIdx.append(",");
+        }
+
+        //@TODO extract values
+
+        buffIdx.deleteCharAt(buffIdx.length() - 1);
+        System.out.println("Selected features: " + buffIdx.toString());
+
+        writer.write(buffValue.toString());
+        writer.flush();
+        writer.close();
     }
 
     /**
      * Count number of instances in each class and compute the values for response matrix.
      * @param logData input data
      */
-    private void countClasses(JavaRDD<String[]> logData)
+    private void countClasses(JavaRDD<List<String[]>> logData)
     {
         // map values in class column into pair of <class, 1>
-        JavaPairRDD<String, Integer> pairs = logData.mapToPair(s -> new Tuple2<>(s[s.length - 1], 1));
+        JavaPairRDD<String, Integer> pairs = logData.mapPartitionsToPair(iterator -> {
+            List<Tuple2<String, Integer>> list = new ArrayList<>();
+            Map<String, Integer> map = new HashMap<>();
+
+            while(iterator.hasNext()){
+                List<String[]> temp = iterator.next();
+
+                for(String[] str : temp) {
+                    String label = str[0];
+                    int size = 0;
+                    if (map.containsKey(label)) {
+                        size = map.get(label) + 1;
+                    }
+
+                    map.put(label, size);
+                }
+
+                for(Map.Entry<String, Integer> entry : map.entrySet()){
+                    list.add(new Tuple2<>(entry.getKey(), entry.getValue()));
+                }
+            }
+
+            return list;
+        });
+
         JavaPairRDD<String, Integer> counts = pairs.reduceByKey((a, b) -> a + b);
         List<Tuple2<String, Integer>> list = counts.collect();
 
@@ -80,20 +146,22 @@ public class AdsInputReader extends FSInputReader
      * @param logData input data
      * @return s scores for each features in a feature matrix
      */
-    private DoubleMatrix computeFeatureScores(JavaRDD<String[]> logData)
+    private DoubleMatrix computeFeatureScores(JavaRDD<List<String[]>> logData)
     {
         xyMatrix = logData.mapPartitions(iterator -> {
             ArrayList<Double[]> featureMatrix = new ArrayList<>();
             ArrayList<Double[]> responseMatrix = new ArrayList<>();
 
             while(iterator.hasNext()) {
-                String[] splittedLine = iterator.next();
-                featureMatrix.add(getFeatures(splittedLine));
+                List<String[]> list = iterator.next();
+                for(String[] splittedLine : list) {
+                    featureMatrix.add(getFeatures(splittedLine));
 
-                if (splittedLine[splittedLine.length - 1].equals(AD)) {
-                    responseMatrix.add(yAd);
-                } else {
-                    responseMatrix.add(yNonAd);
+                    if (splittedLine[0].equals(AD)) {
+                        responseMatrix.add(yAd);
+                    } else {
+                        responseMatrix.add(yNonAd);
+                    }
                 }
             }
 
@@ -116,8 +184,7 @@ public class AdsInputReader extends FSInputReader
 
         DoubleMatrix e = totalScore.getEMatrix();
         DoubleMatrix v = totalScore.getVMatrix();
-        DoubleMatrix s;
-        s = DoubleMatrix.ones(e.getRows()).transpose().mmul(e.mul(e));
+        DoubleMatrix s = DoubleMatrix.ones(e.getRows()).transpose().mmul(e.mul(e));
 
 //		System.out.println("Dimension E: " + e.getRows() + " x " + e.getColumns());
 //		System.out.println("Dimension v: " + v.getRows() + " x " + v.getColumns());
@@ -265,13 +332,25 @@ public class AdsInputReader extends FSInputReader
      */
     private static Double[] getFeatures(String cells[])
     {
-        Double features[] = new Double[cells.length - 1];
-        for(int i = 0; i < features.length; i++) {
+        Double features[] = new Double[FEATURE_SIZE];
+        int j = 1;
+        for(int i = 1; i < cells.length; i++) {
+            String temp[] = cells[i].split(":");
+            int featureId = Integer.parseInt(temp[0]);
             // To treat missing values, we convert them to zero.
-            if(cells[i].trim().equals("?"))
-                cells[i] = "0";
 
-            features[i] = Double.parseDouble(cells[i]);
+            while(j < featureId){
+                features[j-1] = 0.0;
+                j++;
+            }
+
+            features[j-1] = Double.parseDouble(temp[1]);
+            j++;
+        }
+
+        while(j <= FEATURE_SIZE){
+            features[j-1] = 0.0;
+            j++;
         }
 
         return features;

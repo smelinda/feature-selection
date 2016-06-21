@@ -7,12 +7,16 @@ public class FeatureSelector
 	{
 		// parameter
 		int loopNumber = 20;
+		String outputName = "out/ad_selected_" + loopNumber + ".data";
 
 		long startTime = System.currentTimeMillis();
+
 		FSInputReader reader = new AdsInputReader();
-		reader.process(loopNumber);
+		reader.process(loopNumber, outputName);
+
 		long endTime = System.currentTimeMillis();
 		long totalTime = endTime - startTime;
 		System.out.println("Time: " +  totalTime/1000 + " s " + totalTime%1000 + " ms");
+
 	}
 }
