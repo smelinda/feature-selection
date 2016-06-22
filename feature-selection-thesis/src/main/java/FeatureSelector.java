@@ -5,18 +5,37 @@ public class FeatureSelector
 {
 	public static void main(String args[]) throws Exception
 	{
-		// parameter
+		FSInputReader reader = new AdsInputReader();
+
+		// If data is not in libsvm format, use the following block
+		/*--------------------------------------------------------*/
+		/*
+		String rawInputFile = reader.getInputPath() + "ad.data";
+		String transformedFile = reader.getInputPath() + "ad_transform.data";
+		TransformInput.transform(rawInputFile, transformedFile);
+		System.out.println("Successfully generated " + transformedFile + " file.");
+		*/
+		/*--------------------------------------------------------*/
+
+		// Parameters for feature selection
+		/*--------------------------------------------------------*/
 		int loopNumber = 20;
-		String outputName = "out/ad_selected_" + loopNumber + ".data";
+		String selectedFeaturesFile = reader.getOutputPath() + "ad_selected_" + loopNumber + ".data";
+		/*--------------------------------------------------------*/
 
 		long startTime = System.currentTimeMillis();
 
-		FSInputReader reader = new AdsInputReader();
-		reader.process(loopNumber, outputName);
+		reader.process(loopNumber, selectedFeaturesFile);
 
 		long endTime = System.currentTimeMillis();
 		long totalTime = endTime - startTime;
 		System.out.println("Time: " +  totalTime/1000 + " s " + totalTime%1000 + " ms");
+
+		// Parameters for classification
+		/*--------------------------------------------------------*/
+		// TODO
+		/*--------------------------------------------------------*/
+
 
 	}
 }

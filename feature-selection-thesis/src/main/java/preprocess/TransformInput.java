@@ -4,9 +4,9 @@ import java.io.*;
 
 public class TransformInput
 {
-    public static void main(String args[]) throws Exception
+    public static void transform(String fileName, String outputName) throws Exception
     {
-        BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(new File("data/ad.data"))));
+        BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(new File(fileName))));
         String line;
 
         StringBuffer buffer = new StringBuffer();
@@ -36,7 +36,7 @@ public class TransformInput
 
         buffer.deleteCharAt(buffer.length() - 1);
         //System.out.println(buffer.toString());
-        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File("data/ad_transform.data"))));
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outputName))));
         writer.write(buffer.toString());
         writer.flush();
         writer.close();

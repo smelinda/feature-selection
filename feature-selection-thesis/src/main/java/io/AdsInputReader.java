@@ -78,6 +78,7 @@ public class AdsInputReader extends FSInputReader
         }
 
         //@TODO extract values
+        Iterator matrixIter = xyMatrix.take(100).iterator();
 
         buffIdx.deleteCharAt(buffIdx.length() - 1);
         System.out.println("Selected features: " + buffIdx.toString());
@@ -119,6 +120,7 @@ public class AdsInputReader extends FSInputReader
             return list;
         });
 
+        // count number of items/points per class
         JavaPairRDD<String, Integer> counts = pairs.reduceByKey((a, b) -> a + b);
         List<Tuple2<String, Integer>> list = counts.collect();
 
@@ -143,11 +145,14 @@ public class AdsInputReader extends FSInputReader
 
     /**
      * Compute feature scores E and v based on algorithm step 1-3
+     * X (features matrix) consists of features.
+     * Y (response matrix) consists of response calculated from formula (4) in the paper using class labels
      * @param logData input data
      * @return s scores for each features in a feature matrix
      */
     private DoubleMatrix computeFeatureScores(JavaRDD<List<String[]>> logData)
     {
+        // map values into pairs of X (features matrix) and Y (response matrix)
         xyMatrix = logData.mapPartitions(iterator -> {
             ArrayList<Double[]> featureMatrix = new ArrayList<>();
             ArrayList<Double[]> responseMatrix = new ArrayList<>();

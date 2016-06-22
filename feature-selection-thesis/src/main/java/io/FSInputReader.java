@@ -74,7 +74,16 @@ public abstract class FSInputReader
      * Get path to output set.
      * @return output path
      */
-    private String getOutputPath()
+    public String getInputPath()
+    {
+        return INPUT_PATH;
+    }
+
+    /**
+     * Get path to output set.
+     * @return output path
+     */
+    public String getOutputPath()
     {
         return OUTPUT_PATH;
     }
