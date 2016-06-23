@@ -17,7 +17,7 @@ public class MultinomialLogReg {
         SparkConf conf = new SparkConf().setAppName("Multinomial LogReg").setMaster("local[2]");
         SparkContext sc = new SparkContext(conf);
 
-        String path = "data/ad_transform_1.data"; // to be changed
+        String path = "out/ad_selected_20.data"; // to be changed
 
         JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc, path).toJavaRDD();
 

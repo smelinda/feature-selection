@@ -56,15 +56,16 @@ public class AdsInputReader extends FSInputReader
         });
 
         countClasses(rawData);
-        printStats();
-
         DoubleMatrix score = computeFeatureScores(rawData);
         DoubleMatrix subMatrix = getSubMatrix(getBestFeatures(score, loopNumber));
+
         try {
             write(subMatrix, outputFileName);
         } catch(Exception e) {
             e.printStackTrace();
         }
+
+        printStats(subMatrix.columns, subMatrix.rows);
 
     }
 
@@ -176,14 +177,8 @@ public class AdsInputReader extends FSInputReader
         DoubleMatrix v = totalScore.getVMatrix();
         DoubleMatrix s = DoubleMatrix.ones(e.getRows()).transpose().mmul(e.mul(e));
 
-//		System.out.println("Dimension E: " + e.getRows() + " x " + e.getColumns());
-//		System.out.println("s before division: " + s.get(s.columns+1));
-//		System.out.println("V: " + v.toString());
-//		System.out.println("#rows of v:" + v.rows);
-//		System.out.println("#columns of v:" + v.columns);
-
-        // Element-wise division on matrix
-        s = s.divi(v);
+        // Element-wise division on matrix = div ("divi" will replace the original matrix)
+        s = s.div(v);
 
         System.out.println("#rows of s:" + s.rows);
         System.out.println("#columns of s:" + s.columns);
@@ -204,7 +199,8 @@ public class AdsInputReader extends FSInputReader
 
         DoubleMatrix cAcc = null;
 
-        while(l < k){
+        while(l < k)
+        {
             Broadcast broadcastIdx = getSparkContext().broadcast(maxIndex);
 
             // step 8
@@ -216,6 +212,7 @@ public class AdsInputReader extends FSInputReader
             });
 
             // step 9
+            // TODO check is this ok for parallel setting?
             if(cAcc == null) {
                 cAcc = ci.reduce((a, b) -> a.add(b));
             } else{
@@ -295,7 +292,7 @@ public class AdsInputReader extends FSInputReader
                 featureMatrices.getMatrixC12().getRows()).transpose().mmul(
                 featureMatrices.getMatrixC12().mul(matrixB)));
 
-        DoubleMatrix s = g.divi(w);
+        DoubleMatrix s = g.div(w);
 
         return s;
     }
@@ -332,26 +329,30 @@ public class AdsInputReader extends FSInputReader
         return features;
     }
 
+    /**
+     * Get the sub matrix of selected features
+     * @param ids indexes of selected features in the original matrix
+     * @return sub matrix with values of selected features
+     */
     private DoubleMatrix getSubMatrix(Set<Integer> ids)
     {
         int temp[] = new int[ids.size()];
         int i = 0;
 
+        System.out.print("Selected indexes: ");
         for(Integer id : ids){
             temp[i++] = id;
+            System.out.print(id + ",");
         }
 
+        System.out.print("\n");
         Arrays.sort(temp);
 
         Broadcast broadcastSelectedIndexes = getSparkContext().broadcast(temp);
 
-        ArrayList<String> allLabels = new ArrayList<String>();
-
         JavaRDD<DoubleMatrix> subMatrix = xyMatrix.map(matrix -> {
             DoubleMatrix x = matrix.getX();
             DoubleMatrix x1 = x.get(new IntervalRange(0, x.getRows()), new IndicesRange((int[])broadcastSelectedIndexes.getValue()));
-
-            allLabels.addAll(matrix.getLabels());
 
             return DoubleMatrix.concatHorizontally(x1, matrix.getY());
         });
@@ -372,29 +373,44 @@ public class AdsInputReader extends FSInputReader
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outputName))));
         StringBuffer buffer = new StringBuffer();
 
-        System.out.println("submatrix: " + subMatrix.rows + " " + subMatrix.columns);
+        int column = subMatrix.columns - 2;
+
         for(int i = 0; i < subMatrix.rows; i++){
-            for(int j = 0; j < subMatrix.columns; j++){
-                buffer.append(subMatrix.get(i, j));
-                buffer.append(",");
+            if(subMatrix.get(i, column - 2) == yAd[0]) {
+                buffer.append("1 "); // ad
+            } else {
+                buffer.append("0 "); // nonad
+            }
+
+            int k = 1;
+
+            for(int j = 0; j < column; j++) {
+                double value = subMatrix.get(i, j);
+                if (value != 0) {
+                    buffer.append(k);
+                    buffer.append(":");
+                    buffer.append(subMatrix.get(i, j));
+                    buffer.append(" ");
+                }
+                k++;
             }
 
             buffer.deleteCharAt(buffer.length() - 1);
             buffer.append("\n");
-            writer.write(buffer.toString());
-            writer.flush();
         }
-
+        writer.write(buffer.toString());
+        writer.flush();
         writer.close();
     }
 
     /**
      * Print out data statistics like number of instances and class distribution.
      */
-    private void printStats()
+    private void printStats(int col, int row)
     {
         System.out.println("# instances:" + numberOfInstances + "(ad:" + ad + ", non ad:" + nonad + ")");
         System.out.println("yAd: [" + yAd[0] + "," + yAd[1] + "]");
         System.out.println("yNonAd: [" + yNonAd[0] +"," + yNonAd[1] + "]");
+        System.out.println("result size: col:" + (col-2) +", row: " + row);
     }
 }
