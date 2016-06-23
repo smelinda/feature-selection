@@ -3,6 +3,7 @@ package io;
 import org.jblas.DoubleMatrix;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 /**
  * Matrix that represents features (X) and class labels as values (Y).
@@ -11,15 +12,18 @@ public class XYMatrix implements Serializable
 {
     private DoubleMatrix x;
     private DoubleMatrix y;
+    private ArrayList<String> labels;
 
     /**
      * Matrix that represents features (X) and class labels as values (Y).
      * @param x feature matrix
-     * @param y class labels as response matrix
+     * @param y response matrix
+     * @param labels class labels
      */
-    public XYMatrix(DoubleMatrix x, DoubleMatrix y) {
+    public XYMatrix(DoubleMatrix x, DoubleMatrix y, ArrayList<String> labels) {
         this.x = x;
         this.y = y;
+        this.labels = labels;
     }
 
     /**
@@ -52,5 +56,21 @@ public class XYMatrix implements Serializable
      */
     public void setY(DoubleMatrix y) {
         this.y = y;
+    }
+
+    /**
+     * Get the labels
+     * @return labels
+     */
+    public ArrayList<String> getLabels() {
+        return labels;
+    }
+
+    /**
+     * Set the labels
+     * @param labels labels
+     */
+    public void setLabels(ArrayList<String> labels) {
+        this.labels = labels;
     }
 }

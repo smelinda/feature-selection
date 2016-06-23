@@ -12,9 +12,10 @@ public class FeatureSelector
 		/*
 		String rawInputFile = reader.getInputPath() + "ad.data";
 		String transformedFile = reader.getInputPath() + "ad_transform.data";
-		TransformInput.transform(rawInputFile, transformedFile);
+		boolean binaryMode = false;
+		TransformInput.transform(rawInputFile, binaryMode, transformedFile);
 		System.out.println("Successfully generated " + transformedFile + " file.");
-		*/
+
 		/*--------------------------------------------------------*/
 
 		// Parameters for feature selection
@@ -30,12 +31,6 @@ public class FeatureSelector
 		long endTime = System.currentTimeMillis();
 		long totalTime = endTime - startTime;
 		System.out.println("Time: " +  totalTime/1000 + " s " + totalTime%1000 + " ms");
-
-		// Parameters for classification
-		/*--------------------------------------------------------*/
-		// TODO
-		/*--------------------------------------------------------*/
-
 
 	}
 }

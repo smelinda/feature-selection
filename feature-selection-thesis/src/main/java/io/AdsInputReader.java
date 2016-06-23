@@ -20,8 +20,8 @@ import java.util.*;
 public class AdsInputReader extends FSInputReader
 {
     private static final String FILE_NAME = "ad_transform.data";
-    private static final String AD = "ad.";
-    private static final String NON_AD = "nonad.";
+    private static final String AD = "ad";
+    private static final String NON_AD = "nonad";
     private static final int FEATURE_SIZE = 1558;
     private int numberOfInstances = 0;
     private int ad = 0;
@@ -57,35 +57,15 @@ public class AdsInputReader extends FSInputReader
 
         countClasses(rawData);
         printStats();
-        DoubleMatrix score = computeFeatureScores(rawData);
 
+        DoubleMatrix score = computeFeatureScores(rawData);
+        DoubleMatrix subMatrix = getSubMatrix(getBestFeatures(score, loopNumber));
         try {
-            write(getBestFeatures(score, loopNumber), outputFileName);
+            write(subMatrix, outputFileName);
         } catch(Exception e) {
             e.printStackTrace();
         }
 
-    }
-
-    private void write(Set<Integer> ids, String outputName) throws Exception{
-        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outputName))));
-        StringBuffer buffIdx = new StringBuffer();
-        StringBuffer buffValue = new StringBuffer();
-
-        for(Integer id : ids){
-            buffIdx.append(id);
-            buffIdx.append(",");
-        }
-
-        //@TODO extract values
-        Iterator matrixIter = xyMatrix.take(100).iterator();
-
-        buffIdx.deleteCharAt(buffIdx.length() - 1);
-        System.out.println("Selected features: " + buffIdx.toString());
-
-        writer.write(buffValue.toString());
-        writer.flush();
-        writer.close();
     }
 
     /**
@@ -101,9 +81,9 @@ public class AdsInputReader extends FSInputReader
 
             while(iterator.hasNext()){
                 List<String[]> temp = iterator.next();
-
                 for(String[] str : temp) {
                     String label = str[0];
+
                     int size = 0;
                     if (map.containsKey(label)) {
                         size = map.get(label) + 1;
@@ -143,6 +123,7 @@ public class AdsInputReader extends FSInputReader
         yNonAd[0] = 1.0 / Math.sqrt(nonad) + yNonAd[1];
     }
 
+
     /**
      * Compute feature scores E and v based on algorithm step 1-3
      * X (features matrix) consists of features.
@@ -156,11 +137,14 @@ public class AdsInputReader extends FSInputReader
         xyMatrix = logData.mapPartitions(iterator -> {
             ArrayList<Double[]> featureMatrix = new ArrayList<>();
             ArrayList<Double[]> responseMatrix = new ArrayList<>();
+            ArrayList<String> labelVector = new ArrayList<>();
 
             while(iterator.hasNext()) {
                 List<String[]> list = iterator.next();
                 for(String[] splittedLine : list) {
                     featureMatrix.add(getFeatures(splittedLine));
+
+                    labelVector.add(splittedLine[0]);
 
                     if (splittedLine[0].equals(AD)) {
                         responseMatrix.add(yAd);
@@ -173,7 +157,8 @@ public class AdsInputReader extends FSInputReader
             DoubleMatrix x = new DoubleMatrix(FSUtil.convertToDoubleArray(featureMatrix));
             DoubleMatrix y = new DoubleMatrix(FSUtil.convertToDoubleArray(responseMatrix));
 
-            return Collections.singleton(new XYMatrix(x, y));
+
+            return Collections.singleton(new XYMatrix(x, y, labelVector));
         }).cache();
 
         JavaRDD<FeatureScore> fScoreMatrix = xyMatrix.map(matrix -> {
@@ -192,8 +177,6 @@ public class AdsInputReader extends FSInputReader
         DoubleMatrix s = DoubleMatrix.ones(e.getRows()).transpose().mmul(e.mul(e));
 
 //		System.out.println("Dimension E: " + e.getRows() + " x " + e.getColumns());
-//		System.out.println("Dimension v: " + v.getRows() + " x " + v.getColumns());
-//		System.out.println("Dimension ones: " + DoubleMatrix.ones(10).getRows() + " x " + DoubleMatrix.ones(10).getColumns());
 //		System.out.println("s before division: " + s.get(s.columns+1));
 //		System.out.println("V: " + v.toString());
 //		System.out.println("#rows of v:" + v.rows);
@@ -202,7 +185,6 @@ public class AdsInputReader extends FSInputReader
         // Element-wise division on matrix
         s = s.divi(v);
 
-//		System.out.println("s after division: " + s.get(s.columns+1));
         System.out.println("#rows of s:" + s.rows);
         System.out.println("#columns of s:" + s.columns);
 
@@ -219,8 +201,6 @@ public class AdsInputReader extends FSInputReader
         Set<Integer> set = new HashSet<>();
         int maxIndex = score.argmax(), k = loopNumber, l = 1;
         set.add(maxIndex);
-
-        //System.out.println("Max Index: " + maxIndex);
 
         DoubleMatrix cAcc = null;
 
@@ -256,13 +236,11 @@ public class AdsInputReader extends FSInputReader
                 }
             }
 
-            //System.out.println("unselected index: " + c.getRows() + " " + c.getColumns());
             DoubleMatrix s = getNextScore(selectedIndexes, unSelectedIndexes, xyMatrix);
             maxIndex = s.argmax();
             set.add(maxIndex);
             l++;
 
-            //System.out.println(maxIndex + " " + l);
         }
 
         return set;
@@ -302,10 +280,6 @@ public class AdsInputReader extends FSInputReader
             DoubleMatrix matrixV2 = ones.transpose().mmul(x2.mul(x2));
 
 //			System.out.println(matrixA.getRows() + " " + matrixA.getColumns());
-//			System.out.println(matrixCY1.getRows() + " " + matrixCY1.getColumns());
-//			System.out.println(matrixCY2.getRows() + " " + matrixCY2.getColumns());
-//			System.out.println(matrixC12.getRows() + " " + matrixC12.getColumns());
-//			System.out.println(matrixV2.getRows() + " " + matrixV2.getColumns());
 
             return new FeatureMatrices(matrixA, matrixCY1, matrixCY2, matrixC12, matrixV2);
         });
@@ -321,11 +295,7 @@ public class AdsInputReader extends FSInputReader
                 featureMatrices.getMatrixC12().getRows()).transpose().mmul(
                 featureMatrices.getMatrixC12().mul(matrixB)));
 
-		//System.out.println("Dimension of G: " + g.getRows() + " x " + g.getColumns());
-		//System.out.println("Dimension of w: " + w.getRows() + " x " + w.getColumns());
         DoubleMatrix s = g.divi(w);
-
-        //System.out.println(matrixG.getRows() + " " + matrixG.getColumns());
 
         return s;
     }
@@ -339,6 +309,7 @@ public class AdsInputReader extends FSInputReader
     {
         Double features[] = new Double[FEATURE_SIZE];
         int j = 1;
+
         for(int i = 1; i < cells.length; i++) {
             String temp[] = cells[i].split(":");
             int featureId = Integer.parseInt(temp[0]);
@@ -353,12 +324,68 @@ public class AdsInputReader extends FSInputReader
             j++;
         }
 
-        while(j <= FEATURE_SIZE){
+        while(j <= FEATURE_SIZE) {
             features[j-1] = 0.0;
             j++;
         }
 
         return features;
+    }
+
+    private DoubleMatrix getSubMatrix(Set<Integer> ids)
+    {
+        int temp[] = new int[ids.size()];
+        int i = 0;
+
+        for(Integer id : ids){
+            temp[i++] = id;
+        }
+
+        Arrays.sort(temp);
+
+        Broadcast broadcastSelectedIndexes = getSparkContext().broadcast(temp);
+
+        ArrayList<String> allLabels = new ArrayList<String>();
+
+        JavaRDD<DoubleMatrix> subMatrix = xyMatrix.map(matrix -> {
+            DoubleMatrix x = matrix.getX();
+            DoubleMatrix x1 = x.get(new IntervalRange(0, x.getRows()), new IndicesRange((int[])broadcastSelectedIndexes.getValue()));
+
+            allLabels.addAll(matrix.getLabels());
+
+            return DoubleMatrix.concatHorizontally(x1, matrix.getY());
+        });
+
+        DoubleMatrix subMatrixCombined = subMatrix.reduce((a, b) -> DoubleMatrix.concatVertically(a, b));
+
+        return subMatrixCombined;
+    }
+
+    /**
+     * To write selected features to a file.
+     * @param subMatrix values of matrix from selected features
+     * @param outputName output file name
+     * @throws Exception
+     */
+    private void write(DoubleMatrix subMatrix, String outputName) throws Exception
+    {
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outputName))));
+        StringBuffer buffer = new StringBuffer();
+
+        System.out.println("submatrix: " + subMatrix.rows + " " + subMatrix.columns);
+        for(int i = 0; i < subMatrix.rows; i++){
+            for(int j = 0; j < subMatrix.columns; j++){
+                buffer.append(subMatrix.get(i, j));
+                buffer.append(",");
+            }
+
+            buffer.deleteCharAt(buffer.length() - 1);
+            buffer.append("\n");
+            writer.write(buffer.toString());
+            writer.flush();
+        }
+
+        writer.close();
     }
 
     /**
