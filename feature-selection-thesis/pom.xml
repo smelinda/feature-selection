@@ -1,5 +1,5 @@
 <project>
-  <groupId>edu.berkeley</groupId>
+  <groupId>de.tub.dima</groupId>
   <artifactId>feature-selector</artifactId>
   <modelVersion>4.0.0</modelVersion>
   <name>Feature Selector</name>
@@ -8,7 +8,7 @@
   <dependencies>
     <dependency> <!-- Spark dependency -->
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-core_2.10</artifactId>
+      <artifactId>spark-core_2.11</artifactId>
       <version>1.6.1</version>
     </dependency>
     <dependency>

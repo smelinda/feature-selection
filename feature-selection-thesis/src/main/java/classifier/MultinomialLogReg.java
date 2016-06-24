@@ -14,21 +14,22 @@ import scala.Tuple2;
 public class MultinomialLogReg {
 
     public static void main(String[] args) {
-        SparkConf conf = new SparkConf().setAppName("Multinomial LogReg").setMaster("local[2]");
+        SparkConf conf = new SparkConf().setAppName("Multinomial LogReg");
         SparkContext sc = new SparkContext(conf);
 
-        String path = "out/ad_selected_20.data"; // to be changed
+        String path = "data/ad_transform_1.data"; // to be changed
+        int numClass = 2;
 
         JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc, path).toJavaRDD();
 
-        // Split initial RDD into two... [60% training data, 40% testing data].
+        // Split initial RDD into two... [70% training data, 30% testing data].
         JavaRDD<LabeledPoint>[] splits = data.randomSplit(new double[] {0.7, 0.3}, 11L);
         JavaRDD<LabeledPoint> training = splits[0].cache();
         JavaRDD<LabeledPoint> test = splits[1];
 
         // Run training algorithm to build the model.
         final LogisticRegressionModel model = new LogisticRegressionWithLBFGS()
-                .setNumClasses(2)
+                .setNumClasses(numClass)
                 .run(training.rdd());
 
         // Compute raw scores on the test set.
@@ -47,7 +48,7 @@ public class MultinomialLogReg {
         System.out.println("Precision = " + precision);
 
         // Save and load model
-        model.save(sc, "testModelPath");
-        LogisticRegressionModel sameModel = LogisticRegressionModel.load(sc, "testModelPath");
+       /* model.save(sc, "testModelPath");
+        LogisticRegressionModel sameModel = LogisticRegressionModel.load(sc, "testModelPath");*/
     }
 }

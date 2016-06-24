@@ -1,5 +1,6 @@
 import io.AdsInputReader;
 import io.FSInputReader;
+import preprocess.TransformInput;
 
 public class FeatureSelector
 {
@@ -9,10 +10,18 @@ public class FeatureSelector
 
 		// If data is not in libsvm format, use the following block
 		/*--------------------------------------------------------*/
-		/*
+
 		String rawInputFile = reader.getInputPath() + "ad.data";
-		String transformedFile = reader.getInputPath() + "ad_transform.data";
-		boolean binaryMode = false;
+		String transformedFile;
+
+		// If class label is binary type (use true), else String type (use false)
+		boolean binaryMode = true;
+
+		if(binaryMode)
+			transformedFile = reader.getInputPath() + "ad_transform_1.data";
+		else
+			transformedFile = reader.getInputPath() + "ad_transform.data";
+
 		TransformInput.transform(rawInputFile, binaryMode, transformedFile);
 		System.out.println("Successfully generated " + transformedFile + " file.");
 
