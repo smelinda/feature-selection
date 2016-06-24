@@ -11,19 +11,33 @@ import org.apache.spark.mllib.regression.LabeledPoint;
 import org.apache.spark.mllib.util.MLUtils;
 import scala.Tuple2;
 
+/**
+ * Multinomial Logistic Regression to train and predict multiclass classification problem.
+ * Source: http://spark.apache.org/docs/latest/mllib-linear-methods.html#logistic-regression
+ * @version 20 June 2016
+ */
 public class MultinomialLogReg {
 
+    /**
+     * Run classification with program arguments:
+     * 0: (String) Complete path to input file (libsvm format)
+     * 1: (Integer) Number of classes
+     * 2: (Double) Proportion of training data from the whole input
+     * @param args Program arguments as above.
+     */
     public static void main(String[] args) {
         SparkConf conf = new SparkConf().setAppName("Multinomial LogReg");
         SparkContext sc = new SparkContext(conf);
 
-        String path = "data/ad_transform_1.data"; // to be changed
-        int numClass = 2;
+        String path = args[0];
+        int numClass = Integer.parseInt(args[1]);
+        double trainPart = Double.parseDouble(args[2]);
 
+        double[] proportion = {trainPart, 1.0 - trainPart};
         JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc, path).toJavaRDD();
 
         // Split initial RDD into two... [70% training data, 30% testing data].
-        JavaRDD<LabeledPoint>[] splits = data.randomSplit(new double[] {0.7, 0.3}, 11L);
+        JavaRDD<LabeledPoint>[] splits = data.randomSplit(proportion, 11L);
         JavaRDD<LabeledPoint> training = splits[0].cache();
         JavaRDD<LabeledPoint> test = splits[1];
 
@@ -46,9 +60,5 @@ public class MultinomialLogReg {
         MulticlassMetrics metrics = new MulticlassMetrics(predictionAndLabels.rdd());
         double precision = metrics.precision();
         System.out.println("Precision = " + precision);
-
-        // Save and load model
-       /* model.save(sc, "testModelPath");
-        LogisticRegressionModel sameModel = LogisticRegressionModel.load(sc, "testModelPath");*/
     }
 }
