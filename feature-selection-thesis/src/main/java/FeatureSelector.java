@@ -1,6 +1,5 @@
 import io.AdsInputReader;
 import io.FSInputReader;
-import preprocess.TransformInput;
 
 public class FeatureSelector
 {
@@ -17,31 +16,9 @@ public class FeatureSelector
 		String datasetName = args[1];
 		int numberOfSelectedFeature = Integer.parseInt(args[2]);
 
-		String transformedFile, selectedFeaturesFile;
+		String selectedFeaturesFile;
 
 		FSInputReader reader = new AdsInputReader(filename, datasetName);
-
-		/*--------------------------------------------------------*/
-		// If data is not in libsvm format, use the following block
-		/*--------------------------------------------------------*/
-		if(datasetName.equals("ads"))
-		{
-			String rawInputFile = reader.getInputPath() + "ad.data";
-			double[] binarizationThreshold = new double[]{320, 320, 320};
-			transformedFile = reader.getInputPath() + "ad_transform_2.data";
-
-			TransformInput.transformAds(rawInputFile, true, transformedFile, binarizationThreshold);
-
-		} else {
-			String dorotheaDataFile = reader.getInputPath() + "dorothea_train.data";
-			String dorotheaLabelFile = reader.getInputPath() + "dorothea_train.labels";
-			transformedFile = reader.getInputPath() + "dorothea_transform.data";
-
-			TransformInput.transformDorothea(dorotheaDataFile, dorotheaLabelFile, transformedFile);
-		}
-
-		System.out.println("Successfully generated " + transformedFile + " file.");
-
 
 		if(datasetName.equals("ads"))
 			selectedFeaturesFile = reader.getOutputPath() + "ad_selected_" + numberOfSelectedFeature + ".data";

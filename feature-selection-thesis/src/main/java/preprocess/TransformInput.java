@@ -1,9 +1,28 @@
 package preprocess;
-
 import java.io.*;
 
 public class TransformInput
 {
+    public static void main(String args[]) throws Exception {
+        String transformedFile;
+
+        if(args[0].equals("ads"))
+        {
+            String rawInputFile = "data/ad.data";
+            double[] binarizationThreshold = new double[]{320, 320, 320};
+            transformedFile = "data/ad_transform.data";
+
+            transformAds(rawInputFile, true, transformedFile, binarizationThreshold);
+
+        } else {
+            String dorotheaDataFile = "data/dorothea_train.data";
+            String dorotheaLabelFile = "data/dorothea_train.labels";
+            transformedFile = "data/dorothea_transform.data";
+
+            transformDorothea(dorotheaDataFile, dorotheaLabelFile, transformedFile);
+        }
+    }
+
 
     public static void countThreshold(String fileName) throws Exception{
         BufferedReader in = new BufferedReader(new InputStreamReader(new FileInputStream(new File(fileName))));
