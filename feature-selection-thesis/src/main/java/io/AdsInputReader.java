@@ -19,15 +19,14 @@ import java.util.*;
 
 public class AdsInputReader extends FSInputReader
 {
-    private static final String FILE_NAME = "ad_transform.data";
-    private static final String AD = "ad";
-    private static final String NON_AD = "nonad";
-    private static final int FEATURE_SIZE = 1558;
+    private static final int ADS_FEATURE_SIZE = 1558;
+    private static final int DOROTHEA_FEATURE_SIZE = 100000;
+    private static String datasetName;
     private int numberOfInstances = 0;
-    private int ad = 0;
-    private int nonad = 0;
-    private static Double yAd[] = new Double[2];
-    private static Double yNonAd[] = new Double[2];
+    private int pos = 0;
+    private int neg = 0;
+    private static Double yPos[] = new Double[2];
+    private static Double yNeg[] = new Double[2];
     private JavaRDD<XYMatrix> xyMatrix;
 
     /**
@@ -35,9 +34,10 @@ public class AdsInputReader extends FSInputReader
      * (https://archive.ics.uci.edu/ml/datasets/Internet+Advertisements)
      * from UCI Machine Learning Repository.
      */
-    public AdsInputReader()
+    public AdsInputReader(String filename, String datasetName)
     {
-        super(FILE_NAME);
+        super(filename);
+        this.datasetName = datasetName;
     }
 
     /**
@@ -106,22 +106,22 @@ public class AdsInputReader extends FSInputReader
         List<Tuple2<String, Integer>> list = counts.collect();
 
         // specific for ad/nonad classes
-        if(list.get(0)._1().equals(AD)){
-            ad = list.get(0)._2();
-            nonad = list.get(1)._2();
+        if(list.get(0)._1().equals("1")){
+            pos = list.get(0)._2();
+            neg = list.get(1)._2();
         } else{
-            ad = list.get(1)._2();
-            nonad = list.get(0)._2();
+            pos = list.get(1)._2();
+            neg = list.get(0)._2();
         }
 
         // as formula (4) in the paper.
-        numberOfInstances = ad + nonad;
+        numberOfInstances = pos + neg;
 
-        yAd[1] = - Math.sqrt(ad) / numberOfInstances;
-        yAd[0] = 1.0 / Math.sqrt(ad) + yAd[1];
+        yPos[1] = - Math.sqrt(pos) / numberOfInstances;
+        yPos[0] = 1.0 / Math.sqrt(pos) + yPos[1];
 
-        yNonAd[1] = - Math.sqrt(nonad) / numberOfInstances;
-        yNonAd[0] = 1.0 / Math.sqrt(nonad) + yNonAd[1];
+        yNeg[1] = - Math.sqrt(neg) / numberOfInstances;
+        yNeg[0] = 1.0 / Math.sqrt(neg) + yNeg[1];
     }
 
 
@@ -147,10 +147,10 @@ public class AdsInputReader extends FSInputReader
 
                     labelVector.add(splittedLine[0]);
 
-                    if (splittedLine[0].equals(AD)) {
-                        responseMatrix.add(yAd);
+                    if (splittedLine[0].equals("1")) {
+                        responseMatrix.add(yPos);
                     } else {
-                        responseMatrix.add(yNonAd);
+                        responseMatrix.add(yNeg);
                     }
                 }
             }
@@ -212,7 +212,6 @@ public class AdsInputReader extends FSInputReader
             });
 
             // step 9
-            // TODO check is this ok for parallel setting?
             if(cAcc == null) {
                 cAcc = ci.reduce((a, b) -> a.add(b));
             } else{
@@ -304,7 +303,13 @@ public class AdsInputReader extends FSInputReader
      */
     private static Double[] getFeatures(String cells[])
     {
-        Double features[] = new Double[FEATURE_SIZE];
+        int numberOfFeature;
+        if(datasetName.equals("ads"))
+            numberOfFeature = ADS_FEATURE_SIZE;
+        else
+            numberOfFeature = DOROTHEA_FEATURE_SIZE;
+
+        Double features[] = new Double[numberOfFeature];
         int j = 1;
 
         for(int i = 1; i < cells.length; i++) {
@@ -321,7 +326,7 @@ public class AdsInputReader extends FSInputReader
             j++;
         }
 
-        while(j <= FEATURE_SIZE) {
+        while(j <= numberOfFeature) {
             features[j-1] = 0.0;
             j++;
         }
@@ -376,10 +381,10 @@ public class AdsInputReader extends FSInputReader
         int column = subMatrix.columns - 2;
 
         for(int i = 0; i < subMatrix.rows; i++){
-            if(subMatrix.get(i, column - 2) == yAd[0]) {
-                buffer.append("1 "); // ad
+            if(subMatrix.get(i, column - 2) == yPos[0]) {
+                buffer.append("1 "); // positive
             } else {
-                buffer.append("0 "); // nonad
+                buffer.append("0 "); // negative
             }
 
             int k = 1;
@@ -408,9 +413,9 @@ public class AdsInputReader extends FSInputReader
      */
     private void printStats(int col, int row)
     {
-        System.out.println("# instances:" + numberOfInstances + "(ad:" + ad + ", non ad:" + nonad + ")");
-        System.out.println("yAd: [" + yAd[0] + "," + yAd[1] + "]");
-        System.out.println("yNonAd: [" + yNonAd[0] +"," + yNonAd[1] + "]");
+        System.out.println("# instances:" + numberOfInstances + "(pos:" + pos + ", neg:" + neg + ")");
+        System.out.println("yPos: [" + yPos[0] + "," + yPos[1] + "]");
+        System.out.println("yNeg: [" + yNeg[0] +"," + yNeg[1] + "]");
         System.out.println("result size: col:" + (col-2) +", row: " + row);
     }
 }

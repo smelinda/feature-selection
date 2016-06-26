@@ -4,38 +4,53 @@ import preprocess.TransformInput;
 
 public class FeatureSelector
 {
+	/**
+	 * Run feature selection with program arguments:
+	 * 0: (String) Complete path to input file (libsvm format)
+	 * 1: (String) Dataset name ("ads" for ads dataset)
+	 * 2: (Integer) Number of features selected
+	 * @param args Program arguments as above.
+	 */
 	public static void main(String args[]) throws Exception
 	{
-		FSInputReader reader = new AdsInputReader();
+		String filename = args[0];
+		String datasetName = args[1];
+		int numberOfSelectedFeature = Integer.parseInt(args[2]);
 
+		String transformedFile, selectedFeaturesFile;
+
+		FSInputReader reader = new AdsInputReader(filename, datasetName);
+
+		/*--------------------------------------------------------*/
 		// If data is not in libsvm format, use the following block
 		/*--------------------------------------------------------*/
+		if(datasetName.equals("ads"))
+		{
+			String rawInputFile = reader.getInputPath() + "ad.data";
+			double[] binarizationThreshold = new double[]{320, 320, 320};
+			transformedFile = reader.getInputPath() + "ad_transform_2.data";
 
-		String rawInputFile = reader.getInputPath() + "ad.data";
-		String transformedFile;
+			TransformInput.transformAds(rawInputFile, true, transformedFile, binarizationThreshold);
 
-		// If class label is binary type (use true), else String type (use false)
-		boolean binaryMode = true;
+		} else {
+			String dorotheaDataFile = reader.getInputPath() + "dorothea_train.data";
+			String dorotheaLabelFile = reader.getInputPath() + "dorothea_train.labels";
+			transformedFile = reader.getInputPath() + "dorothea_transform.data";
 
-		if(binaryMode)
-			transformedFile = reader.getInputPath() + "ad_transform_1.data";
-		else
-			transformedFile = reader.getInputPath() + "ad_transform.data";
+			TransformInput.transformDorothea(dorotheaDataFile, dorotheaLabelFile, transformedFile);
+		}
 
-		TransformInput.transform(rawInputFile, binaryMode, transformedFile);
 		System.out.println("Successfully generated " + transformedFile + " file.");
 
-		/*--------------------------------------------------------*/
 
-		// Parameters for feature selection
-		/*--------------------------------------------------------*/
-		int loopNumber = 20;
-		String selectedFeaturesFile = reader.getOutputPath() + "ad_selected_" + loopNumber + ".data";
-		/*--------------------------------------------------------*/
+		if(datasetName.equals("ads"))
+			selectedFeaturesFile = reader.getOutputPath() + "ad_selected_" + numberOfSelectedFeature + ".data";
+		else
+			selectedFeaturesFile = reader.getOutputPath() + "dorothea_selected_" + numberOfSelectedFeature + ".data";
 
 		long startTime = System.currentTimeMillis();
 
-		reader.process(loopNumber, selectedFeaturesFile);
+		reader.process(numberOfSelectedFeature, selectedFeaturesFile);
 
 		long endTime = System.currentTimeMillis();
 		long totalTime = endTime - startTime;
