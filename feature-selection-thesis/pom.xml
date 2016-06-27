@@ -5,16 +5,17 @@
   <name>Feature Selector</name>
   <packaging>jar</packaging>
   <version>1.0</version>
+
   <dependencies>
     <dependency> <!-- Spark dependency -->
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-core_2.11</artifactId>
-      <version>1.6.1</version>
+      <version>1.6.0</version> <!-- before was 1.6.1 -->
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-mllib_2.11</artifactId>
-      <version>1.6.1</version>
+      <version>1.6.0</version> <!-- before was 1.6.1 -->
     </dependency>
     <dependency>
       <groupId>org.jblas</groupId>
@@ -22,4 +23,51 @@
       <version>1.2.4</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <finalName>feature-selector</finalName>
+    <plugins>
+
+      <!-- Set a compiler level -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <compilerVersion>1.8</compilerVersion>
+          <source>1.8</source>
+          <target>1.8</target>
+        </configuration>
+      </plugin>
+
+      <!-- any other plugins -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.4.1</version>
+        <configuration>
+          <!-- get all project dependencies -->
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+          <!-- MainClass in manifest make a executable jar -->
+          <archive>
+            <manifest>
+              <mainClass>FeatureSelector</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+
+        <executions>
+          <execution>
+            <!-- bind to the packaging phase -->
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
 </project>

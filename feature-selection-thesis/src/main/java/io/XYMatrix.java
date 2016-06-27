@@ -18,12 +18,10 @@ public class XYMatrix implements Serializable
      * Matrix that represents features (X) and class labels as values (Y).
      * @param x feature matrix
      * @param y response matrix
-     * @param labels class labels
      */
-    public XYMatrix(DoubleMatrix x, DoubleMatrix y, ArrayList<String> labels) {
+    public XYMatrix(DoubleMatrix x, DoubleMatrix y) {
         this.x = x;
         this.y = y;
-        this.labels = labels;
     }
 
     /**
@@ -56,21 +54,5 @@ public class XYMatrix implements Serializable
      */
     public void setY(DoubleMatrix y) {
         this.y = y;
-    }
-
-    /**
-     * Get the labels
-     * @return labels
-     */
-    public ArrayList<String> getLabels() {
-        return labels;
-    }
-
-    /**
-     * Set the labels
-     * @param labels labels
-     */
-    public void setLabels(ArrayList<String> labels) {
-        this.labels = labels;
     }
 }

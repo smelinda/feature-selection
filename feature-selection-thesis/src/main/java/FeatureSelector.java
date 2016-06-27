@@ -1,6 +1,9 @@
 import io.AdsInputReader;
 import io.FSInputReader;
 
+import java.io.File;
+import java.security.CodeSource;
+
 public class FeatureSelector
 {
 	/**
@@ -18,12 +21,22 @@ public class FeatureSelector
 
 		String selectedFeaturesFile;
 
-		FSInputReader reader = new AdsInputReader(filename, datasetName);
+		CodeSource codeSource = FeatureSelector.class.getProtectionDomain().getCodeSource();
+		File jarFile = new File(codeSource.getLocation().toURI().getPath());
+
+		// NOTE: for cluster, use the first line, else use the second line
+		//String jarDir = jarFile.getParentFile().getPath();
+		String jarDir = jarFile.getParentFile().getParentFile().getPath();
+
+		System.out.println(jarDir);
+
+
+		FSInputReader reader = new AdsInputReader(jarDir, filename, datasetName);
 
 		if(datasetName.equals("ads"))
-			selectedFeaturesFile = reader.getOutputPath() + "ad_selected_" + numberOfSelectedFeature + ".data";
+			selectedFeaturesFile = jarDir + "/" + reader.getOutputPath() + "ad_selected_" + numberOfSelectedFeature + ".data";
 		else
-			selectedFeaturesFile = reader.getOutputPath() + "dorothea_selected_" + numberOfSelectedFeature + ".data";
+			selectedFeaturesFile = jarDir + "/" + reader.getOutputPath() + "dorothea_selected_" + numberOfSelectedFeature + ".data";
 
 		long startTime = System.currentTimeMillis();
 

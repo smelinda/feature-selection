@@ -21,7 +21,7 @@ public class AdsInputReader extends FSInputReader
 {
     private static final int ADS_FEATURE_SIZE = 1558;
     private static final int DOROTHEA_FEATURE_SIZE = 100000;
-    private static String datasetName;
+    private static int numberOfFeatures = 0;
     private int numberOfInstances = 0;
     private int pos = 0;
     private int neg = 0;
@@ -34,10 +34,31 @@ public class AdsInputReader extends FSInputReader
      * (https://archive.ics.uci.edu/ml/datasets/Internet+Advertisements)
      * from UCI Machine Learning Repository.
      */
-    public AdsInputReader(String filename, String datasetName)
+    public AdsInputReader(String jarDir, String filename, String datasetName)
     {
-        super(filename);
-        this.datasetName = datasetName;
+        super(jarDir, filename);
+        if(datasetName.equals("ads")) {
+            numberOfFeatures = ADS_FEATURE_SIZE;
+        } else {
+            numberOfFeatures = DOROTHEA_FEATURE_SIZE;
+        }
+
+        File outputDir = new File(jarDir + "/" + this.getOutputPath());
+
+        // if the directory does not exist, create it
+        if (!outputDir.exists()) {
+            boolean result = false;
+
+            try{
+                outputDir.mkdir();
+                result = true;
+            }
+            catch(SecurityException se){
+            }
+            if(result) {
+                System.out.println("Output directory created");
+            }
+        }
     }
 
     /**
@@ -138,14 +159,11 @@ public class AdsInputReader extends FSInputReader
         xyMatrix = logData.mapPartitions(iterator -> {
             ArrayList<Double[]> featureMatrix = new ArrayList<>();
             ArrayList<Double[]> responseMatrix = new ArrayList<>();
-            ArrayList<String> labelVector = new ArrayList<>();
 
             while(iterator.hasNext()) {
                 List<String[]> list = iterator.next();
                 for(String[] splittedLine : list) {
                     featureMatrix.add(getFeatures(splittedLine));
-
-                    labelVector.add(splittedLine[0]);
 
                     if (splittedLine[0].equals("1")) {
                         responseMatrix.add(yPos);
@@ -159,7 +177,7 @@ public class AdsInputReader extends FSInputReader
             DoubleMatrix y = new DoubleMatrix(FSUtil.convertToDoubleArray(responseMatrix));
 
 
-            return Collections.singleton(new XYMatrix(x, y, labelVector));
+            return Collections.singleton(new XYMatrix(x, y));
         }).cache();
 
         JavaRDD<FeatureScore> fScoreMatrix = xyMatrix.map(matrix -> {
@@ -264,9 +282,6 @@ public class AdsInputReader extends FSInputReader
             DoubleMatrix x1 = x.get(new IntervalRange(0, x.getRows()), new IndicesRange((int[])broadcastSelectedIndexes.getValue()));
             DoubleMatrix x2 = x.get(new IntervalRange(0, x.getRows()), new IndicesRange((int[])broadcastUnselectedIndexes.getValue()));
 
-//			System.out.println("Dimension x1: " + x1.getRows() + " " + x1.getColumns());
-//			System.out.println("Dimension x2: " + x2.getRows() + " " + x2.getColumns());
-
             DoubleMatrix ones = DoubleMatrix.ones(x.getRows());
 
             DoubleMatrix matrixA = x1.transpose().mmul(x1);
@@ -274,8 +289,6 @@ public class AdsInputReader extends FSInputReader
             DoubleMatrix matrixCY2 = y.transpose().mmul(x2);
             DoubleMatrix matrixC12 = x1.transpose().mmul(x2);
             DoubleMatrix matrixV2 = ones.transpose().mmul(x2.mul(x2));
-
-//			System.out.println(matrixA.getRows() + " " + matrixA.getColumns());
 
             return new FeatureMatrices(matrixA, matrixCY1, matrixCY2, matrixC12, matrixV2);
         });
@@ -303,13 +316,8 @@ public class AdsInputReader extends FSInputReader
      */
     private static Double[] getFeatures(String cells[])
     {
-        int numberOfFeature;
-        if(datasetName.equals("ads"))
-            numberOfFeature = ADS_FEATURE_SIZE;
-        else
-            numberOfFeature = DOROTHEA_FEATURE_SIZE;
 
-        Double features[] = new Double[numberOfFeature];
+        Double features[] = new Double[numberOfFeatures];
         int j = 1;
 
         for(int i = 1; i < cells.length; i++) {
@@ -326,7 +334,7 @@ public class AdsInputReader extends FSInputReader
             j++;
         }
 
-        while(j <= numberOfFeature) {
+        while(j <= numberOfFeatures) {
             features[j-1] = 0.0;
             j++;
         }
@@ -375,6 +383,7 @@ public class AdsInputReader extends FSInputReader
      */
     private void write(DoubleMatrix subMatrix, String outputName) throws Exception
     {
+
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outputName))));
         StringBuffer buffer = new StringBuffer();
 

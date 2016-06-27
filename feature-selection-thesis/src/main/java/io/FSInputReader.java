@@ -35,11 +35,13 @@ public abstract class FSInputReader
      * Constructor that regulates input reader structure for feature selection.
      * @param fileName input file name
      */
-    public FSInputReader(String fileName)
+    public FSInputReader(String jarDir, String fileName)
     {
         SparkConf conf = new SparkConf().setAppName("Feature Selector");
+                //.setMaster("spark://ibm-power-1.dima.tu-berlin.de:7077");
         sc = new JavaSparkContext(conf);
-        rawData = sc.textFile(getPathToTrainingSet(fileName)).cache();
+        rawData = sc.textFile(jarDir + "/" + getInputPath() + fileName).cache();
+
     }
 
     /**
@@ -58,16 +60,6 @@ public abstract class FSInputReader
     protected JavaSparkContext getSparkContext()
     {
         return sc;
-    }
-
-    /**
-     * Get path to training set.
-     * @param fileName input data set file name
-     * @return complete file path
-     */
-    private String getPathToTrainingSet(String fileName)
-    {
-        return INPUT_PATH + fileName;
     }
 
     /**

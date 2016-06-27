@@ -18,8 +18,8 @@ public class YoutubeInputReader extends FSInputReader {
      * (https://archive.ics.uci.edu/ml/datasets/YouTube+Multiview+Video+Games+Dataset)
      * from UCI Machine Learning Repository.
      */
-    public YoutubeInputReader(){
-        super(FILE_NAME);
+    public YoutubeInputReader(String jarDir){
+        super(jarDir, FILE_NAME);
     }
 
     public void process(int loopNumber, String outputName){
