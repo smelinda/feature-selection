@@ -38,16 +38,11 @@ public class AdsInputReader extends FSInputReader
 
         // if the output directory does not exist, create it
         if (!outputDir.exists()) {
-            boolean result = false;
 
             try{
                 outputDir.mkdir();
-                result = true;
             }
             catch(SecurityException se){
-            }
-            if(result) {
-                System.out.println("Output directory created");
             }
         }
     }
@@ -224,7 +219,7 @@ public class AdsInputReader extends FSInputReader
 
         DoubleMatrix cAcc = null;
 
-        while(l < k)
+        while(l <= k)
         {
             Broadcast broadcastIdx = getSparkContext().broadcast(maxIndex);
 
@@ -257,16 +252,34 @@ public class AdsInputReader extends FSInputReader
                     unSelectedIndexes[j++] = i;
                 }
             }
-            System.out.println("j: " + j + " i: " + i + " l: " + l);
 
             DoubleMatrix s = getNextScore(selectedIndexes, unSelectedIndexes, xyMatrix);
             maxIndex = s.argmax();
-            set.add(maxIndex);
-            l++;
 
+            if(set.contains(maxIndex)){
+                set.add(getIndexOfMaxValue(set, s));
+            } else {
+                set.add(maxIndex);
+            }
+
+            l++;
         }
 
         return set;
+    }
+
+    private int getIndexOfMaxValue(Set<Integer> set, DoubleMatrix s){
+        int idx = 0;
+        double value = 0;
+
+        for(int i = 0; i < s.columns; i++){
+            if(!set.contains(i) && s.get(0, i) > value){
+                value = s.get(0, i);
+                idx = i;
+            }
+        }
+
+        return idx;
     }
 
     /**
@@ -358,13 +371,9 @@ public class AdsInputReader extends FSInputReader
         int temp[] = new int[ids.size()];
         int i = 0;
 
-        System.out.print("Selected indexes: ");
         for(Integer id : ids){
-            if (i!=0) System.out.print(",");
             temp[i++] = id;
-            System.out.print(id);
         }
-        System.out.print("\n");
 
         Arrays.sort(temp);
         Broadcast broadcastSelectedIndexes = getSparkContext().broadcast(temp);

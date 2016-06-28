@@ -25,11 +25,8 @@ public class FeatureSelector
 		File jarFile = new File(codeSource.getLocation().toURI().getPath());
 
 		// NOTE: for cluster, use the first line, else use the second line
-		String jarDir = jarFile.getParentFile().getPath();
-		//String jarDir = jarFile.getParentFile().getParentFile().getPath();
-
-		System.out.println(jarDir);
-
+		//String jarDir = jarFile.getParentFile().getPath();
+		String jarDir = jarFile.getParentFile().getParentFile().getPath();
 
 		FSInputReader reader = new AdsInputReader(jarDir, filename);
 
@@ -38,8 +35,6 @@ public class FeatureSelector
 		} else {
 			selectedFeaturesFile = jarDir + "/" + reader.getOutputPath() + "dorothea_selected_" + numberOfSelectedFeature + ".data";
 		}
-
-		System.out.println("Output dir: " + selectedFeaturesFile);
 
 		long startTime = System.currentTimeMillis();
 
