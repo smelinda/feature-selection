@@ -21,12 +21,8 @@ public class AdsInputReader extends FSInputReader
 {
     private static final int ADS_FEATURE_SIZE = 1558;
     private static final int DOROTHEA_FEATURE_SIZE = 100000;
-    private static int numberOfFeatures = 0;
-    private int numberOfInstances = 0;
-    private int pos = 0;
-    private int neg = 0;
-    private static Double yPos[] = new Double[2];
-    private static Double yNeg[] = new Double[2];
+    private Broadcast bcFeatures;
+    private Broadcast<double[]> bcInstances;
     private JavaRDD<XYMatrix> xyMatrix;
 
     /**
@@ -34,18 +30,13 @@ public class AdsInputReader extends FSInputReader
      * (https://archive.ics.uci.edu/ml/datasets/Internet+Advertisements)
      * from UCI Machine Learning Repository.
      */
-    public AdsInputReader(String jarDir, String filename, String datasetName)
+    public AdsInputReader(String jarDir, String filename)
     {
         super(jarDir, filename);
-        if(datasetName.equals("ads")) {
-            numberOfFeatures = ADS_FEATURE_SIZE;
-        } else {
-            numberOfFeatures = DOROTHEA_FEATURE_SIZE;
-        }
 
         File outputDir = new File(jarDir + "/" + this.getOutputPath());
 
-        // if the directory does not exist, create it
+        // if the output directory does not exist, create it
         if (!outputDir.exists()) {
             boolean result = false;
 
@@ -66,6 +57,16 @@ public class AdsInputReader extends FSInputReader
      */
     public void process(int loopNumber, String outputFileName)
     {
+        int numberOfFeatures;
+
+        if(outputFileName.contains("dorothea")) {
+            numberOfFeatures = DOROTHEA_FEATURE_SIZE;
+        } else {
+            numberOfFeatures = ADS_FEATURE_SIZE;
+        }
+
+        bcFeatures = getSparkContext().broadcast(numberOfFeatures);
+
         JavaRDD<List<String[]>> rawData = getRawData().mapPartitions(iterator -> {
             List<String[]> list = new ArrayList<>();
 
@@ -77,16 +78,16 @@ public class AdsInputReader extends FSInputReader
         });
 
         countClasses(rawData);
-        DoubleMatrix score = computeFeatureScores(rawData);
+        DoubleMatrix score = computeFeatureScores(rawData, bcFeatures, bcInstances);
         DoubleMatrix subMatrix = getSubMatrix(getBestFeatures(score, loopNumber));
 
         try {
-            write(subMatrix, outputFileName);
+            write(subMatrix, bcInstances, outputFileName);
         } catch(Exception e) {
             e.printStackTrace();
         }
 
-        printStats(subMatrix.columns, subMatrix.rows);
+        printStats(bcInstances, subMatrix.columns, subMatrix.rows);
 
     }
 
@@ -126,23 +127,30 @@ public class AdsInputReader extends FSInputReader
         JavaPairRDD<String, Integer> counts = pairs.reduceByKey((a, b) -> a + b);
         List<Tuple2<String, Integer>> list = counts.collect();
 
+        double[] instances = new double[7];
+
         // specific for ad/nonad classes
         if(list.get(0)._1().equals("1")){
-            pos = list.get(0)._2();
-            neg = list.get(1)._2();
+            instances[1] = list.get(0)._2(); // number of positive data points
+            instances[2] = list.get(1)._2(); // number of negative data points
         } else{
-            pos = list.get(1)._2();
-            neg = list.get(0)._2();
+            instances[1] = list.get(1)._2(); // number of positive data points
+            instances[2] = list.get(0)._2(); // number of negative data points
         }
 
         // as formula (4) in the paper.
-        numberOfInstances = pos + neg;
+        instances[0] = instances[1] + instances[2]; // number of instances = positive + negative
 
-        yPos[1] = - Math.sqrt(pos) / numberOfInstances;
-        yPos[0] = 1.0 / Math.sqrt(pos) + yPos[1];
+        // yPos[0] = instances[3], yPos[1] = instances[4]
+        instances[4] = - Math.sqrt(instances[1]) / instances[0];
+        instances[3] = 1.0 / Math.sqrt(instances[1]) + instances[4];
 
-        yNeg[1] = - Math.sqrt(neg) / numberOfInstances;
-        yNeg[0] = 1.0 / Math.sqrt(neg) + yNeg[1];
+        // yNeg[0] = instances[5], yNeg[1] = instances[6]
+        instances[6] = - Math.sqrt(instances[2]) / instances[0];
+        instances[5] = 1.0 / Math.sqrt(instances[2]) + instances[6];
+
+        bcInstances = getSparkContext().broadcast(instances);
+
     }
 
 
@@ -153,8 +161,12 @@ public class AdsInputReader extends FSInputReader
      * @param logData input data
      * @return s scores for each features in a feature matrix
      */
-    private DoubleMatrix computeFeatureScores(JavaRDD<List<String[]>> logData)
+    private DoubleMatrix computeFeatureScores(JavaRDD<List<String[]>> logData, Broadcast bcFeatures, Broadcast<double[]> bcInstances)
     {
+        double[] instances = bcInstances.getValue();
+        Double[] bcYPos = new Double[]{instances[3], instances[4]};
+        Double[] bcYNeg = new Double[]{instances[5], instances[6]};
+
         // map values into pairs of X (features matrix) and Y (response matrix)
         xyMatrix = logData.mapPartitions(iterator -> {
             ArrayList<Double[]> featureMatrix = new ArrayList<>();
@@ -163,19 +175,17 @@ public class AdsInputReader extends FSInputReader
             while(iterator.hasNext()) {
                 List<String[]> list = iterator.next();
                 for(String[] splittedLine : list) {
-                    featureMatrix.add(getFeatures(splittedLine));
-
+                    featureMatrix.add(getFeatures(splittedLine, bcFeatures));
                     if (splittedLine[0].equals("1")) {
-                        responseMatrix.add(yPos);
+                        responseMatrix.add(bcYPos);
                     } else {
-                        responseMatrix.add(yNeg);
+                        responseMatrix.add(bcYNeg);
                     }
                 }
             }
 
             DoubleMatrix x = new DoubleMatrix(FSUtil.convertToDoubleArray(featureMatrix));
             DoubleMatrix y = new DoubleMatrix(FSUtil.convertToDoubleArray(responseMatrix));
-
 
             return Collections.singleton(new XYMatrix(x, y));
         }).cache();
@@ -197,9 +207,6 @@ public class AdsInputReader extends FSInputReader
 
         // Element-wise division on matrix = div ("divi" will replace the original matrix)
         s = s.div(v);
-
-        System.out.println("#rows of s:" + s.rows);
-        System.out.println("#columns of s:" + s.columns);
 
         return s;
     }
@@ -240,6 +247,7 @@ public class AdsInputReader extends FSInputReader
             int unSelectedIndexes[] = new int[cAcc.rows - l];
 
             int i = 0, j = 0;
+
             for(Integer idx : set){
                 selectedIndexes[i++] = idx;
             }
@@ -249,6 +257,7 @@ public class AdsInputReader extends FSInputReader
                     unSelectedIndexes[j++] = i;
                 }
             }
+            System.out.println("j: " + j + " i: " + i + " l: " + l);
 
             DoubleMatrix s = getNextScore(selectedIndexes, unSelectedIndexes, xyMatrix);
             maxIndex = s.argmax();
@@ -271,8 +280,6 @@ public class AdsInputReader extends FSInputReader
     {
         Broadcast broadcastSelectedIndexes = getSparkContext().broadcast(selectedIndexes);
         Broadcast broadcastUnselectedIndexes = getSparkContext().broadcast(unselectedIndexes);
-
-        System.out.println("Selected: " + selectedIndexes.length + " Unselected: " + unselectedIndexes.length);
 
         // step 10
         JavaRDD<FeatureMatrices> temp = logData.map(matrix -> {
@@ -314,16 +321,15 @@ public class AdsInputReader extends FSInputReader
      * @param cells cells per row in input file
      * @return features in a double array
      */
-    private static Double[] getFeatures(String cells[])
+    private static Double[] getFeatures(String cells[], Broadcast bcNumOfFeatures)
     {
 
-        Double features[] = new Double[numberOfFeatures];
+        Double features[] = new Double[(Integer)bcNumOfFeatures.value()];
         int j = 1;
 
         for(int i = 1; i < cells.length; i++) {
             String temp[] = cells[i].split(":");
             int featureId = Integer.parseInt(temp[0]);
-            // To treat missing values, we convert them to zero.
 
             while(j < featureId){
                 features[j-1] = 0.0;
@@ -334,7 +340,7 @@ public class AdsInputReader extends FSInputReader
             j++;
         }
 
-        while(j <= numberOfFeatures) {
+        while(j <= (Integer)bcNumOfFeatures.value()) {
             features[j-1] = 0.0;
             j++;
         }
@@ -354,13 +360,13 @@ public class AdsInputReader extends FSInputReader
 
         System.out.print("Selected indexes: ");
         for(Integer id : ids){
+            if (i!=0) System.out.print(",");
             temp[i++] = id;
-            System.out.print(id + ",");
+            System.out.print(id);
         }
-
         System.out.print("\n");
-        Arrays.sort(temp);
 
+        Arrays.sort(temp);
         Broadcast broadcastSelectedIndexes = getSparkContext().broadcast(temp);
 
         JavaRDD<DoubleMatrix> subMatrix = xyMatrix.map(matrix -> {
@@ -381,16 +387,18 @@ public class AdsInputReader extends FSInputReader
      * @param outputName output file name
      * @throws Exception
      */
-    private void write(DoubleMatrix subMatrix, String outputName) throws Exception
+    private void write(DoubleMatrix subMatrix, Broadcast<double[]> bcInstances, String outputName) throws Exception
     {
-
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(outputName))));
         StringBuffer buffer = new StringBuffer();
 
         int column = subMatrix.columns - 2;
+        double[] instances = bcInstances.getValue();
 
-        for(int i = 0; i < subMatrix.rows; i++){
-            if(subMatrix.get(i, column - 2) == yPos[0]) {
+        for(int i = 0; i < subMatrix.rows; i++)
+        {
+            // if the value equals to yPos[0]
+            if(subMatrix.get(i, column - 2) == instances[3]) {
                 buffer.append("1 "); // positive
             } else {
                 buffer.append("0 "); // negative
@@ -412,6 +420,7 @@ public class AdsInputReader extends FSInputReader
             buffer.deleteCharAt(buffer.length() - 1);
             buffer.append("\n");
         }
+
         writer.write(buffer.toString());
         writer.flush();
         writer.close();
@@ -420,11 +429,12 @@ public class AdsInputReader extends FSInputReader
     /**
      * Print out data statistics like number of instances and class distribution.
      */
-    private void printStats(int col, int row)
+    private void printStats(Broadcast<double[]> bcInstances, int col, int row)
     {
-        System.out.println("# instances:" + numberOfInstances + "(pos:" + pos + ", neg:" + neg + ")");
-        System.out.println("yPos: [" + yPos[0] + "," + yPos[1] + "]");
-        System.out.println("yNeg: [" + yNeg[0] +"," + yNeg[1] + "]");
+        double[] instances = bcInstances.getValue();
+        System.out.println("# instances: " + (int)instances[0] + " (pos: " + (int)instances[1] + ", neg: " + (int)instances[2] + ")");
+        System.out.println("yPos: [" + instances[3] + "," + instances[4] + "]");
+        System.out.println("yNeg: [" + instances[5] +"," + instances[6] + "]");
         System.out.println("result size: col:" + (col-2) +", row: " + row);
     }
 }

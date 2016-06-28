@@ -3,7 +3,6 @@ package classifier;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.function.Function;
 import org.apache.spark.mllib.classification.LogisticRegressionModel;
 import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS;
 import org.apache.spark.mllib.evaluation.MulticlassMetrics;
@@ -48,16 +47,15 @@ public class MultinomialLogReg {
 
         // Compute raw scores on the test set.
         JavaRDD<Tuple2<Object, Object>> predictionAndLabels = test.map(
-                new Function<LabeledPoint, Tuple2<Object, Object>>() {
-                    public Tuple2<Object, Object> call(LabeledPoint p) {
-                        Double prediction = model.predict(p.features());
-                        return new Tuple2<Object, Object>(prediction, p.label());
-                    }
+                (LabeledPoint p) -> {
+                    Double prediction = model.predict(p.features());
+                    return new Tuple2<>(prediction, p.label());
                 }
         );
 
         // Get evaluation metrics.
         MulticlassMetrics metrics = new MulticlassMetrics(predictionAndLabels.rdd());
+        double labels[] = metrics.labels();
         double precision = metrics.precision();
         System.out.println("Precision = " + precision);
     }
