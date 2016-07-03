@@ -1,15 +1,8 @@
 package io;
 
-import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
-import scala.Tuple2;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-public class YoutubeInputReader extends FSInputReader {
-    private static final String FILE_NAME = "ad.data";
+public class YoutubeInputReader {
+/*public class YoutubeInputReader extends FSInputReader {
+    /*private static final String FILE_NAME = "ad.data";
     private int numberOfInstances = 0;
     private Map<String, ResponseMatrixValue> responseMatrixValueMap = new HashMap<>();
 
@@ -18,7 +11,7 @@ public class YoutubeInputReader extends FSInputReader {
      * (https://archive.ics.uci.edu/ml/datasets/YouTube+Multiview+Video+Games+Dataset)
      * from UCI Machine Learning Repository.
      */
-    public YoutubeInputReader(String jarDir){
+    /*public YoutubeInputReader(String jarDir){
         super(jarDir, FILE_NAME);
     }
 
@@ -30,7 +23,7 @@ public class YoutubeInputReader extends FSInputReader {
      * Count number of instances in each class and compute the values for response matrix.
      * @param logData input data
      */
-    private void countClasses(JavaRDD<String> logData)
+    /*private void countClasses(JavaRDD<String> logData)
     {
         // map values in class column into pair of <class, 1>
         JavaPairRDD<String, Integer> pairs = logData.mapToPair(s -> {
@@ -58,5 +51,5 @@ public class YoutubeInputReader extends FSInputReader {
         }
 
         return counter;
-    }
+    }*/
 }

@@ -30,9 +30,9 @@ public class AdsInputReader extends FSInputReader
      * (https://archive.ics.uci.edu/ml/datasets/Internet+Advertisements)
      * from UCI Machine Learning Repository.
      */
-    public AdsInputReader(String jarDir, String filename)
+    public AdsInputReader(String jarDir, String filename, int numOfExecutors)
     {
-        super(jarDir, filename);
+        super(jarDir, filename, numOfExecutors);
 
         File outputDir = new File(jarDir + "/" + this.getOutputPath());
 
@@ -74,7 +74,10 @@ public class AdsInputReader extends FSInputReader
 
         countClasses(rawData);
         DoubleMatrix score = computeFeatureScores(rawData, bcFeatures, bcInstances);
-        DoubleMatrix subMatrix = getSubMatrix(getBestFeatures(score, loopNumber));
+        Set<Integer> selectedFeatures = getBestFeatures(score, loopNumber);
+        DoubleMatrix subMatrix = getSubMatrix(selectedFeatures);
+
+        System.out.println("Selected indexes: " + selectedFeatures);
 
         try {
             write(subMatrix, bcInstances, outputFileName);
