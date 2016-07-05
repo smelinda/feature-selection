@@ -35,14 +35,11 @@ public abstract class FSInputReader
      * Constructor that regulates input reader structure for feature selection.
      * @param fileName input file name
      */
-    public FSInputReader(String jarDir, String fileName, int numOfExecutors)
+    public FSInputReader(String fileName, int numOfExecutors)
     {
         SparkConf conf = new SparkConf().setAppName("Feature Selector");
-                //.setMaster("spark://ibm-power-1.dima.tu-berlin.de:7077");
         sc = new JavaSparkContext(conf);
-        //rawData = sc.textFile(jarDir + "/" + getInputPath() + fileName).cache();
         rawData = sc.textFile(fileName, numOfExecutors).cache();
-
     }
 
     /**
@@ -67,15 +64,6 @@ public abstract class FSInputReader
      * Get path to output set.
      * @return output path
      */
-    public String getInputPath()
-    {
-        return INPUT_PATH;
-    }
-
-    /**
-     * Get path to output set.
-     * @return output path
-     */
     public String getOutputPath()
     {
         return OUTPUT_PATH;
@@ -86,5 +74,5 @@ public abstract class FSInputReader
      * @param loopNumber number of features to be selected
      * @param outputFileName name of the file with selected features only
      */
-    abstract public void process(int loopNumber, String outputFileName);
+    abstract public void process(int loopNumber, String outputFileName, String datasetName);
 }

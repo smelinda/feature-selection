@@ -30,31 +30,20 @@ public class AdsInputReader extends FSInputReader
      * (https://archive.ics.uci.edu/ml/datasets/Internet+Advertisements)
      * from UCI Machine Learning Repository.
      */
-    public AdsInputReader(String jarDir, String filename, int numOfExecutors)
+    public AdsInputReader(String filename, int numOfExecutors)
     {
-        super(jarDir, filename, numOfExecutors);
-
-        File outputDir = new File(jarDir + "/" + this.getOutputPath());
-
-        // if the output directory does not exist, create it
-        if (!outputDir.exists()) {
-
-            try{
-                outputDir.mkdir();
-            }
-            catch(SecurityException se){
-            }
-        }
+        super(filename, numOfExecutors);
     }
 
     /**
      * Run feature selection.
      */
-    public void process(int loopNumber, String outputFileName)
+    public void process(int loopNumber, String outputName, String datasetName)
     {
+        /* define number of original features in the dataset */
         int numberOfFeatures;
 
-        if(outputFileName.contains("dorothea")) {
+        if(datasetName.contains("dorothea")) {
             numberOfFeatures = DOROTHEA_FEATURE_SIZE;
         } else {
             numberOfFeatures = ADS_FEATURE_SIZE;
@@ -62,6 +51,7 @@ public class AdsInputReader extends FSInputReader
 
         bcFeatures = getSparkContext().broadcast(numberOfFeatures);
 
+        /* read data from input file*/
         JavaRDD<List<String[]>> rawData = getRawData().mapPartitions(iterator -> {
             List<String[]> list = new ArrayList<>();
 
@@ -79,8 +69,21 @@ public class AdsInputReader extends FSInputReader
 
         System.out.println("Selected indexes: " + selectedFeatures);
 
+        /* write output to file and statistics */
+        File outputDir = new File(outputName);
+
+        // if the output directory does not exist, create it
+        if (!outputDir.exists()) {
+
+            try{
+                outputDir.mkdir();
+            }
+            catch(SecurityException se){
+            }
+        }
+
         try {
-            write(subMatrix, bcInstances, outputFileName);
+            write(subMatrix, bcInstances, outputName);
         } catch(Exception e) {
             e.printStackTrace();
         }
@@ -95,7 +98,7 @@ public class AdsInputReader extends FSInputReader
      */
     private void countClasses(JavaRDD<List<String[]>> logData)
     {
-        // map values in class column into pair of <class, 1>
+        /* map values in class column into pair of <class, 1> */
         JavaPairRDD<String, Integer> pairs = logData.mapPartitionsToPair(iterator -> {
             List<Tuple2<String, Integer>> list = new ArrayList<>();
             Map<String, Integer> map = new HashMap<>();
