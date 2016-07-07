@@ -18,12 +18,13 @@ public class FeatureSelector
 		int numOfSelectedFeatures = Integer.parseInt(args[2]);
 		int numOfExecutors = Integer.parseInt(args[3]);
 		String outputName = args[4];
+		String bucketName = args[5];
 
 		FSInputReader reader = new AdsInputReader(fileName, numOfExecutors);
 
 		long startTime = System.currentTimeMillis();
 
-		reader.process(numOfSelectedFeatures, outputName, datasetName);
+		reader.process(numOfSelectedFeatures, outputName, datasetName, bucketName);
 
 		long endTime = System.currentTimeMillis();
 		long totalTime = endTime - startTime;

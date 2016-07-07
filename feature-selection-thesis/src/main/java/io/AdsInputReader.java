@@ -1,5 +1,9 @@
 package io;
 
+import com.google.api.client.http.InputStreamContent;
+import com.google.api.services.storage.Storage;
+import com.google.api.services.storage.model.ObjectAccessControl;
+import com.google.api.services.storage.model.StorageObject;
 import helper.FSUtil;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
@@ -10,10 +14,8 @@ import org.jblas.ranges.IndicesRange;
 import org.jblas.ranges.IntervalRange;
 import scala.Tuple2;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
+import java.security.GeneralSecurityException;
 import java.util.*;
 
 
@@ -38,7 +40,7 @@ public class AdsInputReader extends FSInputReader
     /**
      * Run feature selection.
      */
-    public void process(int loopNumber, String outputName, String datasetName)
+    public void process(int loopNumber, String outputName, String datasetName, String bucketName)
     {
         /* define number of original features in the dataset */
         int numberOfFeatures;
@@ -51,7 +53,7 @@ public class AdsInputReader extends FSInputReader
 
         bcFeatures = getSparkContext().broadcast(numberOfFeatures);
 
-        /* read data from input file*/
+        /* read data from input file */
         JavaRDD<List<String[]>> rawData = getRawData().mapPartitions(iterator -> {
             List<String[]> list = new ArrayList<>();
 
@@ -70,26 +72,54 @@ public class AdsInputReader extends FSInputReader
         System.out.println("Selected indexes: " + selectedFeatures);
 
         /* write output to file and statistics */
-        File outputDir = new File(outputName);
-
-        // if the output directory does not exist, create it
-        if (!outputDir.exists()) {
-
-            try{
-                outputDir.mkdir();
-            }
-            catch(SecurityException se){
-            }
-        }
-
         try {
             write(subMatrix, bcInstances, outputName);
+            uploadFile("output/" + outputName, "text/plain", new File(outputName), bucketName);
         } catch(Exception e) {
             e.printStackTrace();
         }
 
         printStats(bcInstances, subMatrix.columns, subMatrix.rows);
 
+    }
+
+    /**
+     * Copyright (c) 2014 Google Inc.
+     *
+     * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+     * in compliance with the License. You may obtain a copy of the License at
+     *
+     * http://www.apache.org/licenses/LICENSE-2.0
+     *
+     * Unless required by applicable law or agreed to in writing, software distributed under the License
+     * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+     * or implied. See the License for the specific language governing permissions and limitations under
+     * the License.
+     *
+     * Uploads data to an object in a bucket.
+     * Modified from: https://github.com/GoogleCloudPlatform/java-docs-samples/blob/master/storage/json-api/src/main/java/StorageSample.java
+     *
+     */
+    public static void uploadFile(
+            String name, String contentType, File file, String bucketName)
+            throws IOException, GeneralSecurityException
+    {
+        InputStreamContent contentStream = new InputStreamContent(contentType, new FileInputStream(file));
+        // Setting the length improves upload performance
+        contentStream.setLength(file.length());
+        StorageObject objectMetadata = new StorageObject()
+                // Set the destination object name
+                .setName(name)
+                // Set the access control list to publicly read-only
+                .setAcl(Arrays.asList(
+                        new ObjectAccessControl().setEntity("allUsers").setRole("READER")));
+
+        // Do the insert
+        Storage client = StorageFactory.getService();
+        Storage.Objects.Insert insertRequest = client.objects().insert(
+                bucketName, objectMetadata, contentStream);
+
+        insertRequest.execute();
     }
 
     /**
@@ -151,7 +181,6 @@ public class AdsInputReader extends FSInputReader
         instances[5] = 1.0 / Math.sqrt(instances[2]) + instances[6];
 
         bcInstances = getSparkContext().broadcast(instances);
-
     }
 
 
@@ -225,7 +254,7 @@ public class AdsInputReader extends FSInputReader
 
         DoubleMatrix cAcc = null;
 
-        while(l <= k)
+        while(l < k)
         {
             Broadcast broadcastIdx = getSparkContext().broadcast(maxIndex);
 
