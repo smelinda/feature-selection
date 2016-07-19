@@ -56,8 +56,10 @@ public class SVMClassifier
         // Get evaluation metrics.
         BinaryClassificationMetrics metrics = new BinaryClassificationMetrics(JavaRDD.toRDD(scoreAndLabels));
         double auROC = metrics.areaUnderROC();
+        double auPR = metrics.areaUnderPR();
 
         System.out.println("Area under ROC = " + auROC);
+        System.out.println("Area under PR = " + auPR);
 
     }
 }
