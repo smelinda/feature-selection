@@ -26,6 +26,7 @@ public class AdsInputReader extends FSInputReader
     private Broadcast bcFeatures;
     private Broadcast<double[]> bcInstances;
     private JavaRDD<XYMatrix> xyMatrix;
+    long startTime = System.currentTimeMillis();
 
     /**
      * Initiate input file name to Internet Advertisements dataset
@@ -282,6 +283,8 @@ public class AdsInputReader extends FSInputReader
                 selectedIndexes[i++] = idx;
             }
 
+            System.out.println(set.size() + " " + cAcc.rows + " " + l + " " + unSelectedIndexes.length);
+
             for(i = 0; i < cAcc.rows; i++){
                 if(!set.contains(i)) {
                     unSelectedIndexes[j++] = i;
@@ -298,7 +301,19 @@ public class AdsInputReader extends FSInputReader
             }
 
             l++;
+
+            if(l % 50 == 0){
+                long endTime = System.currentTimeMillis();
+                long totalTime = endTime - startTime;
+                System.out.println("Time to proceed : " + l + " data = " +  totalTime/1000 + " s " + totalTime%1000 + " ms");
+            }
+
+            if(set.size() != l){// to stop when the rest of the values are the same
+                break;
+            }
         }
+
+        System.out.println("Total selected indexes: " + set.size() + " / " + k);
 
         return set;
     }
@@ -308,7 +323,7 @@ public class AdsInputReader extends FSInputReader
         double value = 0;
 
         for(int i = 0; i < s.columns; i++){
-            if(!set.contains(i) && s.get(0, i) > value){
+            if(!set.contains(i) && s.get(0, i) >= value){
                 value = s.get(0, i);
                 idx = i;
             }

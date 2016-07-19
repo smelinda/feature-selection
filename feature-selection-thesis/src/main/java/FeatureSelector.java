@@ -9,6 +9,8 @@ public class FeatureSelector
 	 * 1: (String) Dataset name ("ads" for ads dataset, "dorothea" for dorothea dataset)
 	 * 2: (Integer) Number of features selected
 	 * 3: (Integer) Number of executors in Spark
+	 * 4: (String) Output file name
+	 * 5: (String) Google Cloud Storage bucket name
 	 * @param args Program arguments as above.
 	 */
 	public static void main(String args[]) throws Exception
