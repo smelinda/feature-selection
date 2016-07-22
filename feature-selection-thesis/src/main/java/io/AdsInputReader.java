@@ -456,11 +456,11 @@ public class AdsInputReader extends FSInputReader
 
         for(int i = 0; i < subMatrix.rows; i++)
         {
-            // if the value equals to yPos[0]
-            if(subMatrix.get(i, column - 2) == instances[3]) {
-                buffer.append("1 "); // positive
-            } else {
+            // if the value equals to yNeg[0]
+            if(subMatrix.get(i, column) == instances[5]) {
                 buffer.append("0 "); // negative
+            } else {
+                buffer.append("1 "); // positive
             }
 
             int k = 1;
